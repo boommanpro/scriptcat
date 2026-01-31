@@ -1,0 +1,702 @@
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { ConfigProvider } from "@arco-design/web-react";
+import "@arco-design/web-react/dist/css/arco.css";
+import "./sidepanel.css";
+
+interface SelectedElement {
+  selector: string;
+  tagName: string;
+  textContent?: string;
+  outerHTML?: string;
+}
+
+interface Message {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  timestamp: number;
+  codeBlocks?: CodeBlock[];
+  request?: object;
+  response?: object;
+}
+
+interface CodeBlock {
+  id: string;
+  code: string;
+  language: string;
+  executed?: boolean;
+  saved?: boolean;
+}
+
+const getLocale = (): any => {
+  return {};
+};
+
+function SidePanelContent() {
+  const [messages, setMessages] = React.useState<Message[]>([]);
+  const [inputValue, setInputValue] = React.useState("");
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [currentDomain, setCurrentDomain] = React.useState("");
+  const [domains, setDomains] = React.useState<string[]>([]);
+  const [selectedMessages, setSelectedMessages] = React.useState<Set<string>>(new Set());
+  const [selectedElements, setSelectedElements] = React.useState<SelectedElement[]>([]);
+  const [isSelecting, setIsSelecting] = React.useState(false);
+  const [showDomainSelector, setShowDomainSelector] = React.useState(false);
+  const [expandedMessages, setExpandedMessages] = React.useState<Set<string>>(new Set());
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const initSidePanel = async () => {
+      console.log("[SidePanel] Sidepanel component mounted, starting initialization...");
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        console.log("[SidePanel] Active tab found:", tab?.id, "url:", tab?.url);
+        if (tab?.url) {
+          const url = new URL(tab.url);
+          setCurrentDomain(url.hostname);
+          console.log("[SidePanel] Current domain:", url.hostname);
+          await loadConversation(url.hostname);
+          await refreshDomains();
+          console.log("[SidePanel] Conversation loaded, injecting execution service...");
+          await injectExecutionService();
+        } else {
+          console.warn("[SidePanel] No URL found in active tab");
+        }
+      } catch (error: any) {
+        console.error("[SidePanel] Failed to initialize side panel:", error);
+      }
+    };
+    initSidePanel();
+  }, []);
+
+  React.useEffect(() => {
+    const handleTabActivated = async (activeInfo: { tabId: number; windowId: number }) => {
+      try {
+        const tab = await chrome.tabs.get(activeInfo.tabId);
+        if (tab?.url) {
+          const url = new URL(tab.url);
+          const newDomain = url.hostname;
+          console.log("[SidePanel] Tab switched to domain:", newDomain);
+          setCurrentDomain(newDomain);
+          await loadConversation(newDomain);
+          await refreshDomains();
+          setSelectedMessages(new Set());
+          setShowDomainSelector(false);
+        }
+      } catch (error: any) {
+        console.error("[SidePanel] Failed to handle tab change:", error);
+      }
+    };
+
+    chrome.tabs.onActivated.addListener(handleTabActivated);
+    return () => {
+      chrome.tabs.onActivated.removeListener(handleTabActivated);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const loadConversation = async (domain: string) => {
+    try {
+      const result = await chrome.storage.local.get(`ai_conversation_${domain}`);
+      if (result[`ai_conversation_${domain}`]) {
+        setMessages(result[`ai_conversation_${domain}`]);
+      } else {
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error("Failed to load conversation:", error);
+      setMessages([]);
+    }
+  };
+
+  const getAllConversationDomains = async (): Promise<string[]> => {
+    try {
+      const allStorage = await chrome.storage.local.get(null);
+      const domainSet = new Set<string>();
+      for (const key of Object.keys(allStorage)) {
+        if (key.startsWith("ai_conversation_")) {
+          const domain = key.replace("ai_conversation_", "");
+          domainSet.add(domain);
+        }
+      }
+      return Array.from(domainSet).sort();
+    } catch (error) {
+      console.error("Failed to get all domains:", error);
+      return [];
+    }
+  };
+
+  const handleSwitchDomain = async (domain: string) => {
+    setCurrentDomain(domain);
+    await loadConversation(domain);
+    setSelectedMessages(new Set());
+    setShowDomainSelector(false);
+  };
+
+  const refreshDomains = async () => {
+    const domainList = await getAllConversationDomains();
+    setDomains(domainList);
+  };
+
+  const toggleMessageSelection = (messageId: string) => {
+    setSelectedMessages((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleExpandedMessages = (messageId: string) => {
+    setExpandedMessages((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
+
+  const removeSelectedElement = (index: number) => {
+    setSelectedElements((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const saveConversation = async (domain: string, msgs: Message[]) => {
+    try {
+      await chrome.storage.local.set({
+        [`ai_conversation_${domain}`]: msgs,
+      });
+    } catch (error) {
+      console.error("Failed to save conversation:", error);
+    }
+  };
+
+  const extractCodeBlocks = (content: string): CodeBlock[] => {
+    const codeBlockRegex = /```javascript\n([\s\S]*?)```/g;
+    const blocks: CodeBlock[] = [];
+    let match;
+    while ((match = codeBlockRegex.exec(content)) !== null) {
+      blocks.push({
+        id: Math.random().toString(36).substr(2, 9),
+        code: match[1],
+        language: "javascript",
+      });
+    }
+    return blocks;
+  };
+
+  const callLLMApi = async (userMessage: string): Promise<void> => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
+
+    const context =
+      selectedElements.length > 0
+        ? `\n\n用户选中的页面元素：\n${selectedElements.map((el) => `- 元素: ${el.tagName}, 选择器: ${el.selector}`).join("\n")}`
+        : "";
+
+    const userContent = userMessage + context;
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: userContent,
+      timestamp: Date.now(),
+    };
+
+    const selectedHistoryMessages = messages.filter((m) => selectedMessages.has(m.id));
+    const messagesWithContext = [...selectedHistoryMessages, userMsg];
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInputValue("");
+    setSelectedElements([]);
+    setIsLoading(true);
+    setSelectedMessages(new Set());
+
+    try {
+      const configResult = await chrome.storage.local.get("ai_settings");
+      const config = configResult.ai_settings || {
+        apiEndpoint: "http://localhost:1234/v1",
+        apiKey: "",
+        model: "qwen/qwen3-4b-2507",
+      };
+
+      const requestBody = {
+        model: config.model,
+        messages: [
+          {
+            role: "system",
+            content: `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台运行的JavaScript代码。
+            规则：
+            1. 只返回符合用户需求的JavaScript代码
+            2. 代码必须用 \`\`\`javascript 和 \`\`\` 包裹
+            3. 代码应该完整、可直接运行
+            4. 如果需要操作页面元素，使用用户提供的选择器
+            5. 不要包含任何解释性文字，除非用户明确要求`,
+          },
+          ...messagesWithContext.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        ],
+        temperature: 0.7,
+        max_tokens: -1,
+        stream: true,
+      };
+
+      const apiResponse = await fetch(`${config.apiEndpoint}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${config.apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!apiResponse.ok) {
+        throw new Error(`API请求失败: ${apiResponse.status}`);
+      }
+
+      const reader = apiResponse.body?.getReader();
+      if (!reader) {
+        throw new Error("无法读取响应流");
+      }
+
+      const decoder = new TextDecoder();
+      let assistantMessage = "";
+      let fullResponseData: object[] = [];
+      const messageId = Date.now().toString();
+
+      const assistantMsg: Message = {
+        id: messageId,
+        role: "assistant",
+        content: "",
+        timestamp: Date.now(),
+        codeBlocks: [],
+        request: requestBody,
+      };
+
+      setMessages((prev) => [...prev, assistantMsg]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6);
+            if (data === "[DONE]") continue;
+
+            try {
+              const parsed = JSON.parse(data);
+              fullResponseData.push(parsed);
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) {
+                assistantMessage += content;
+                const codeBlocks = extractCodeBlocks(assistantMessage);
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === messageId ? ({ ...m, content: assistantMessage, codeBlocks } as Message) : m
+                  )
+                );
+              }
+            } catch (_e) {}
+          }
+        }
+      }
+
+      const finalCodeBlocks = extractCodeBlocks(assistantMessage);
+      const finalAssistantMsg: Message = {
+        ...assistantMsg,
+        content: assistantMessage,
+        codeBlocks: finalCodeBlocks,
+        response: { chunks: fullResponseData },
+      };
+
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? finalAssistantMsg : m)));
+
+      await saveConversation(currentDomain, [...messagesWithContext, finalAssistantMsg]);
+    } catch (error) {
+      console.error("API调用失败:", error);
+      const errorMsg: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: `抱歉，发生了错误：${error instanceof Error ? error.message : "未知错误"}`,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+      setSelectedElements([]);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!inputValue.trim() || isLoading) return;
+    await callLLMApi(inputValue);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const startElementSelection = async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) {
+      alert("无法获取当前标签页");
+      return;
+    }
+
+    setIsSelecting(true);
+    setSelectedElements([]);
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        message: "ai-start-selection",
+        tabId: tab.id,
+      });
+
+      if (!response?.success) {
+        throw new Error(response?.error || "Unknown error");
+      }
+    } catch (error: any) {
+      console.error("启动元素选择失败:", error);
+      setIsSelecting(false);
+      alert(`启动元素选择失败: ${error.message || error}`);
+    }
+  };
+
+  const stopElementSelection = async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) {
+      setIsSelecting(false);
+      return;
+    }
+
+    try {
+      await chrome.runtime.sendMessage({
+        message: "ai-stop-selection",
+        tabId: tab.id,
+      });
+    } catch (error) {
+      console.error("停止元素选择失败:", error);
+    }
+    setIsSelecting(false);
+  };
+
+  React.useEffect(() => {
+    const handleMessage = (message: any) => {
+      if (message.message === "ai-element-selected") {
+        const elements = message.data.elements as SelectedElement[];
+        setSelectedElements(elements);
+        setIsSelecting(false);
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(handleMessage);
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage);
+    };
+  }, []);
+
+  const executeCode = async (code: string) => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) {
+      console.warn("[SidePanel-ExecuteCode] No active tab found");
+      return { success: false, error: "No tab" };
+    }
+
+    console.log("[SidePanel-ExecuteCode] Starting execution", { tabId: tab.id, codePreview: code.substring(0, 50) + "..." });
+
+    try {
+      const result = await chrome.runtime.sendMessage({
+        message: "ai-execute-code",
+        tabId: tab.id,
+        code,
+      });
+      console.log("[SidePanel-ExecuteCode] Execution result:", result);
+      return result;
+    } catch (error: any) {
+      console.error("[SidePanel-ExecuteCode] Code execution failed:", error);
+      return { success: false, error: String(error) };
+    }
+  };
+
+  const injectExecutionService = async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) {
+      console.log("[SidePanel] No active tab found, skipping injection");
+      return;
+    }
+
+    console.log("[SidePanel] Starting AI Code Executor injection for tab:", tab.id, "url:", tab.url);
+
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        world: "MAIN",
+        func: () => {
+          const AI_SERVICE = "ai-code-executor";
+          console.log("[Page] AI Code Executor script starting...");
+          
+          if ((window as any)[AI_SERVICE]) {
+            console.log("[Page] AI Code Executor already exists, skipping");
+            return;
+          }
+
+          function executeCode(code: string) {
+             console.log("[Page] Executing code:", code.substring(0, 100) + "...");
+             try {
+               const fn = new Function(code);
+               const result = fn();
+               console.log("[Page] Code execution success, result:", result);
+               return { success: true, result: String(result), type: typeof result };
+             } catch (error: any) {
+               console.error("[Page] Code execution failed:", error);
+               return { success: false, error: String(error), errorType: error.constructor.name };
+             }
+           }
+
+          (window as any)[AI_SERVICE] = { execute: executeCode, serviceName: AI_SERVICE };
+          console.log("[Page] AI Code Executor attached to window");
+
+          if (chrome && chrome.runtime && chrome.runtime.onMessage) {
+            chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+              console.log("[Page] Received message:", message.type, "executionId:", message.executionId);
+              if (message.type === AI_SERVICE) {
+                const result = executeCode(message.code);
+                console.log("[Page] Sending response:", result);
+                sendResponse({ ...result, executionId: message.executionId });
+              }
+              return true;
+            });
+            console.log("[Page] Message listener registered");
+          } else {
+            console.warn("[Page] chrome.runtime.onMessage not available");
+          }
+
+          console.log("[Page] AI Code Executor Service initialized successfully");
+        },
+      });
+
+      console.log("[SidePanel] AI Code Executor service injected successfully for tab:", tab.id);
+    } catch (error: any) {
+      console.error("[SidePanel] Failed to inject execution service:", error);
+    }
+  };
+
+  const handleRunCode = async (codeBlock: CodeBlock) => {
+    console.log("[SidePanel-HandleRunCode] User clicked run button", { codePreview: codeBlock.code.substring(0, 50) + "..." });
+    const result = await executeCode(codeBlock.code);
+    console.log("[SidePanel-HandleRunCode] ========== Final Result ==========");
+    if (result && typeof result === "object" && "success" in result) {
+      if (result.success) {
+        console.log("[SidePanel-HandleRunCode] ✅ 代码执行成功");
+        console.log("[SidePanel-HandleRunCode] 结果:", result.result);
+        console.log("[SidePanel-HandleRunCode] 类型:", result.type);
+      } else {
+        console.error("[SidePanel-HandleRunCode] ❌ 代码执行失败:", result.error);
+      }
+    } else {
+      console.log("[SidePanel-HandleRunCode] 结果:", result);
+    }
+    console.log("[SidePanel-HandleRunCode] ===================================");
+  };
+
+  const handleSaveCode = async (codeBlock: CodeBlock) => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.url) return;
+
+    const url = new URL(tab.url);
+    const domain = url.hostname;
+
+    try {
+      await chrome.storage.local.set({
+        [`ai_script_${domain}_${Date.now()}`]: {
+          code: codeBlock.code,
+          domain,
+          url: tab.url,
+          createTime: Date.now(),
+        },
+      });
+      alert("代码已保存到脚本列表");
+    } catch (error) {
+      console.error("保存失败:", error);
+      alert("保存失败");
+    }
+  };
+
+  return (
+    <div className="ai-sidepanel">
+      <div className="ai-header">
+        <h2>AI 对话</h2>
+        <div className="domain-selector-container">
+          <button className="domain-selector-btn" onClick={() => { refreshDomains(); setShowDomainSelector(!showDomainSelector); }}>
+            {currentDomain || "选择域名"} ▼
+          </button>
+          {showDomainSelector && (
+            <div className="domain-dropdown">
+              {domains.length === 0 ? (
+                <div className="domain-empty">暂无对话历史</div>
+              ) : (
+                domains.map((domain) => (
+                  <div
+                    key={domain}
+                    className={`domain-item ${domain === currentDomain ? "active" : ""}`}
+                    onClick={() => handleSwitchDomain(domain)}
+                  >
+                    {domain}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="ai-messages">
+        {messages.length === 0 ? (
+          <div className="ai-empty">
+            <div className="ai-empty-icon">🤖</div>
+            <p>我是 AI 助手，可以帮你编写浏览器脚本</p>
+            <p>告诉我你想实现什么功能吧！</p>
+            {messages.length > 0 && (
+              <p className="ai-empty-hint">勾选左侧消息可选择发送给 AI 的历史对话</p>
+            )}
+          </div>
+        ) : (
+          messages.map((msg) => (
+            <div key={msg.id} className={`ai-message ${msg.role}`}>
+              {msg.role === "user" ? (
+                <div className={`message-checkbox ${selectedMessages.has(msg.id) ? "checked" : ""}`} onClick={() => toggleMessageSelection(msg.id)}>
+                  <input type="checkbox" checked={selectedMessages.has(msg.id)} readOnly />
+                </div>
+              ) : (
+                <div className={`debug-toggle ${expandedMessages.has(msg.id) ? "expanded" : ""}`} onClick={() => toggleExpandedMessages(msg.id)}>
+                  {expandedMessages.has(msg.id) ? "▼" : "▶"}
+                </div>
+              )}
+              <div className="ai-message-content">
+                {msg.role === "user" ? (
+                  <div className="message-text">{msg.content}</div>
+                ) : (
+                  <div className="message-text">
+                    {msg.content.split(/(```javascript[\s\S]*?```)/g).map((part, index) => {
+                      if (part.startsWith("```javascript") && part.endsWith("```")) {
+                        const code = part.slice(14, -3);
+                        const codeBlock = msg.codeBlocks?.[Math.floor(index / 2)];
+                        return (
+                          <div key={index} className="code-block">
+                            <pre>
+                              <code>{code}</code>
+                            </pre>
+                            <div className="code-actions">
+                              <button className="run-btn" onClick={() => codeBlock && handleRunCode(codeBlock)}>
+                                运行
+                              </button>
+                              <button className="save-btn" onClick={() => codeBlock && handleSaveCode(codeBlock)}>
+                                保存
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return part && <span key={index}>{part}</span>;
+                    })}
+                  </div>
+                )}
+              </div>
+              {msg.role === "assistant" && expandedMessages.has(msg.id) && (
+                <div className="debug-panel">
+                  <div className="debug-section">
+                    <div className="debug-title">Request</div>
+                    <pre className="debug-content">{JSON.stringify(msg.request, null, 2)}</pre>
+                  </div>
+                  <div className="debug-section">
+                    <div className="debug-title">Response</div>
+                    <pre className="debug-content">{JSON.stringify(msg.response, null, 2)}</pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+        {isLoading && (
+          <div className="ai-message assistant loading">
+            <div className="ai-message-content">
+              <div className="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {selectedElements.length > 0 && (
+        <div className="element-tags">
+          {selectedElements.map((el, index) => (
+            <div key={index} className="element-tag">
+              <span className="element-tag-text">{el.tagName}</span>
+              <span className="element-tag-remove" onClick={() => removeSelectedElement(index)}>×</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="ai-input-area">
+        <button
+          className={`select-element-btn ${isSelecting ? "active" : ""}`}
+          onClick={isSelecting ? stopElementSelection : startElementSelection}
+          title={isSelecting ? "停止选择" : "选择页面元素"}
+        >
+          {isSelecting ? "⏹" : "🎯"}
+        </button>
+        <textarea
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="描述你想要的功能..."
+          rows={3}
+        />
+        <button className="send-btn" onClick={handleSend} disabled={isLoading || !inputValue.trim()}>
+          发送
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <ConfigProvider locale={getLocale()}>
+      <SidePanelContent />
+    </ConfigProvider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+  process.env.NODE_ENV === "development" ? (
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  ) : (
+    <App />
+  )
+);

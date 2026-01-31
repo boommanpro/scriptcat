@@ -41,6 +41,7 @@ export default defineConfig({
     confirm: `${src}/pages/confirm/main.tsx`,
     import: `${src}/pages/import/main.tsx`,
     options: `${src}/pages/options/main.tsx`,
+    sidepanel: `${src}/sidepanel.tsx`,
     "editor.worker": "monaco-editor/esm/vs/editor/editor.worker.js",
     "ts.worker": "monaco-editor/esm/vs/language/typescript/ts.worker.js",
     "linter.worker": `${src}/linter.worker.ts`,
@@ -127,7 +128,6 @@ export default defineConfig({
             const manifest = JSON.parse(content.toString());
             if (isDev || isBeta) {
               manifest.name = "__MSG_scriptcat_beta__";
-              // manifest.content_security_policy = "script-src 'self' https://cdn.crowdin.com; object-src 'self'";
             }
             return JSON.stringify(manifest);
           },
@@ -140,6 +140,10 @@ export default defineConfig({
         {
           from: `${assets}/_locales`,
           to: `${dist}/ext/_locales`,
+        },
+        {
+          from: `${src}/content-script-inject.js`,
+          to: `${dist}/ext/src`,
         },
       ],
     }),
@@ -204,6 +208,14 @@ export default defineConfig({
       inject: "head",
       minify: true,
       chunks: ["sandbox"],
+    }),
+    new rspack.HtmlRspackPlugin({
+      filename: `${dist}/ext/src/sidepanel.html`,
+      template: `${src}/sidepanel.html`,
+      inject: "head",
+      title: "AI Chat - ScriptCat",
+      minify: true,
+      chunks: ["sidepanel"],
     }),
   ].filter(Boolean),
   optimization: {

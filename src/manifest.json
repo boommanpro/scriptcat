@@ -41,8 +41,12 @@
     "notifications",
     "clipboardWrite",
     "unlimitedStorage",
-    "declarativeNetRequest"
+    "declarativeNetRequest",
+    "sidePanel"
   ],
+  "side_panel": {
+    "default_path": "src/sidepanel.html"
+  },
   "optional_permissions": [
     "background",
     "userScripts"
