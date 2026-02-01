@@ -150,8 +150,8 @@ function getElementSelector(element) {
 function getElementInfo(element) {
   const tagName = element.tagName.toLowerCase();
   const selector = getElementSelector(element);
-  const textContent = element.textContent?.trim().slice(0, 100) || "";
-  const outerHTML = element.outerHTML.slice(0, 300);
+  const textContent = element.textContent?.trim().slice(0, 200) || "";
+  const outerHTML = element.outerHTML.slice(0, 2000);
 
   let href = null;
   if (element.tagName.toLowerCase() === "a" && element.getAttribute("href")) {

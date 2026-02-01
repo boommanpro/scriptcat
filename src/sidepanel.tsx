@@ -9,6 +9,10 @@ interface SelectedElement {
   tagName: string;
   textContent?: string;
   outerHTML?: string;
+  href?: string;
+  src?: string;
+  id?: string;
+  className?: string;
 }
 
 interface Message {
@@ -166,6 +170,25 @@ function SidePanelContent() {
     });
   };
 
+  const refreshCurrentPage = async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        chrome.tabs.reload(tab.id);
+      }
+    } catch (error) {
+      console.error("Failed to refresh page:", error);
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+    }
+  };
+
   const removeSelectedElement = (index: number) => {
     setSelectedElements((prev) => prev.filter((_, i) => i !== index));
   };
@@ -194,16 +217,55 @@ function SidePanelContent() {
     return blocks;
   };
 
+  const parseElementRefs = (content: string, elements: SelectedElement[]) => {
+    const elementRefRegex = /\[(\d+)\]/g;
+    const parts: Array<{ type: 'text' | 'element-ref'; content: string; index?: number }> = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = elementRefRegex.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: 'text', content: content.slice(lastIndex, match.index) });
+      }
+      const elementIndex = parseInt(match[1], 10) - 1;
+      if (elementIndex >= 0 && elementIndex < elements.length) {
+        parts.push({ type: 'element-ref', content: match[0], index: elementIndex });
+      } else {
+        parts.push({ type: 'text', content: match[0] });
+      }
+      lastIndex = elementRefRegex.lastIndex;
+    }
+
+    if (lastIndex < content.length) {
+      parts.push({ type: 'text', content: content.slice(lastIndex) });
+    }
+
+    return parts;
+  };
+
+  const replaceElementRefs = (content: string, elements: SelectedElement[]) => {
+    return content.replace(/\[(\d+)\]/g, (_, num) => {
+      const idx = parseInt(num, 10) - 1;
+      if (idx >= 0 && idx < elements.length) {
+        const el = elements[idx];
+        return `[元素${num}] 选择器: ${el.selector}\n源代码: ${el.outerHTML || ''}`;
+      }
+      return `[${num}]`;
+    });
+  };
+
   const callLLMApi = async (userMessage: string): Promise<void> => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) return;
 
+    const processedMessage = replaceElementRefs(userMessage, selectedElements);
+
     const context =
       selectedElements.length > 0
-        ? `\n\n用户选中的页面元素：\n${selectedElements.map((el) => `- 元素: ${el.tagName}, 选择器: ${el.selector}`).join("\n")}`
+        ? `\n\n用户选中的页面元素：\n${selectedElements.map((el, idx) => `[元素${idx + 1}] 选择器: ${el.selector}\n源代码: ${el.outerHTML || ''}`).join("\n\n")}`
         : "";
 
-    const userContent = userMessage + context;
+    const userContent = processedMessage + context;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -362,13 +424,12 @@ function SidePanelContent() {
     }
 
     setIsSelecting(true);
-    setSelectedElements([]);
 
     try {
       const response = await chrome.runtime.sendMessage({
         message: "ai-start-selection",
         tabId: tab.id,
-        mode: "visual" // 使用视觉选择模式
+        mode: "visual"
       });
 
       if (!response?.success) {
@@ -399,11 +460,38 @@ function SidePanelContent() {
     setIsSelecting(false);
   };
 
+  const formatElementRef = (element: SelectedElement, index: number) => {
+    return `### [${index + 1}] 元素引用
+**选择器**: \`${element.selector}\`
+**源代码**:
+\`\`\`html
+${element.outerHTML || ''}
+\`\`\`
+`;
+  };
+
+  const insertElementInfo = (element: SelectedElement, index: number) => {
+    const elementText = formatElementRef(element, index);
+    setInputValue((prev) => `${elementText}${prev ? `\n---\n\n${prev}` : ''}`);
+  };
+
+  const insertAllElements = () => {
+    if (selectedElements.length === 0) return;
+    const elementsText = selectedElements
+      .map((el, idx) => formatElementRef(el, idx))
+      .join('');
+    setInputValue((prev) => `${elementsText}${prev ? `\n---\n\n${prev}` : ''}`);
+  };
+
   React.useEffect(() => {
     const handleMessage = (message: any) => {
       if (message.message === "ai-element-selected") {
-        const elements = message.data.elements as SelectedElement[];
-        setSelectedElements(elements);
+        const newElements = message.data.elements as SelectedElement[];
+        setSelectedElements((prev) => {
+          const existingSelectors = new Set(prev.map((el) => el.selector));
+          const uniqueNewElements = newElements.filter((el) => !existingSelectors.has(el.selector));
+          return [...prev, ...uniqueNewElements];
+        });
         setIsSelecting(false);
       }
     };
@@ -453,7 +541,7 @@ function SidePanelContent() {
         func: () => {
           const AI_SERVICE = "ai-code-executor";
           console.log("[Page] AI Code Executor script starting...");
-          
+
           if ((window as any)[AI_SERVICE]) {
             console.log("[Page] AI Code Executor already exists, skipping");
             return;
@@ -541,31 +629,60 @@ function SidePanelContent() {
     }
   };
 
+  const renderMessageContent = (content: string) => {
+    const parts = parseElementRefs(content, selectedElements);
+
+    return (
+      <div className="message-text">
+        {parts.map((part, idx) => {
+          if (part.type === 'element-ref' && part.index !== undefined) {
+            const el = selectedElements[part.index];
+            return (
+              <span
+                key={idx}
+                className="element-ref-tag"
+                title={`${el?.tagName}: ${el?.selector}`}
+              >
+                {part.content}
+              </span>
+            );
+          }
+          return <span key={idx}>{part.content}</span>;
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="ai-sidepanel">
       <div className="ai-header">
         <h2>AI 对话</h2>
-        <div className="domain-selector-container">
-          <button className="domain-selector-btn" onClick={() => { refreshDomains(); setShowDomainSelector(!showDomainSelector); }}>
-            {currentDomain || "选择域名"} ▼
+        <div className="header-actions">
+          <button className="refresh-btn" onClick={refreshCurrentPage} title="刷新页面">
+            ↻
           </button>
-          {showDomainSelector && (
-            <div className="domain-dropdown">
-              {domains.length === 0 ? (
-                <div className="domain-empty">暂无对话历史</div>
-              ) : (
-                domains.map((domain) => (
-                  <div
-                    key={domain}
-                    className={`domain-item ${domain === currentDomain ? "active" : ""}`}
-                    onClick={() => handleSwitchDomain(domain)}
-                  >
-                    {domain}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+          <div className="domain-selector-container">
+            <button className="domain-selector-btn" onClick={() => { refreshDomains(); setShowDomainSelector(!showDomainSelector); }}>
+              {currentDomain || "选择域名"} ▼
+            </button>
+            {showDomainSelector && (
+              <div className="domain-dropdown">
+                {domains.length === 0 ? (
+                  <div className="domain-empty">暂无对话历史</div>
+                ) : (
+                  domains.map((domain) => (
+                    <div
+                      key={domain}
+                      className={`domain-item ${domain === currentDomain ? "active" : ""}`}
+                      onClick={() => handleSwitchDomain(domain)}
+                    >
+                      {domain}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -582,18 +699,17 @@ function SidePanelContent() {
         ) : (
           messages.map((msg) => (
             <div key={msg.id} className={`ai-message ${msg.role}`}>
-              {msg.role === "user" ? (
-                <div className={`message-checkbox ${selectedMessages.has(msg.id) ? "checked" : ""}`} onClick={() => toggleMessageSelection(msg.id)}>
-                  <input type="checkbox" checked={selectedMessages.has(msg.id)} readOnly />
-                </div>
-              ) : (
+              <div className={`message-checkbox ${selectedMessages.has(msg.id) ? "checked" : ""}`} onClick={() => toggleMessageSelection(msg.id)}>
+                <input type="checkbox" checked={selectedMessages.has(msg.id)} readOnly />
+              </div>
+              {msg.role === "assistant" && msg.codeBlocks && msg.codeBlocks.length > 0 && (
                 <div className={`debug-toggle ${expandedMessages.has(msg.id) ? "expanded" : ""}`} onClick={() => toggleExpandedMessages(msg.id)}>
                   {expandedMessages.has(msg.id) ? "▼" : "▶"}
                 </div>
               )}
               <div className="ai-message-content">
                 {msg.role === "user" ? (
-                  <div className="message-text">{msg.content}</div>
+                  renderMessageContent(msg.content)
                 ) : (
                   <div className="message-text">
                     {msg.content.split(/(```javascript[\s\S]*?```)/g).map((part, index) => {
@@ -624,11 +740,17 @@ function SidePanelContent() {
               {msg.role === "assistant" && expandedMessages.has(msg.id) && (
                 <div className="debug-panel">
                   <div className="debug-section">
-                    <div className="debug-title">Request</div>
+                    <div className="debug-header">
+                      <span className="debug-title">Request</span>
+                      <button className="copy-btn" onClick={() => copyToClipboard(JSON.stringify(msg.request, null, 2))}>复制</button>
+                    </div>
                     <pre className="debug-content">{JSON.stringify(msg.request, null, 2)}</pre>
                   </div>
                   <div className="debug-section">
-                    <div className="debug-title">Response</div>
+                    <div className="debug-header">
+                      <span className="debug-title">Response</span>
+                      <button className="copy-btn" onClick={() => copyToClipboard(JSON.stringify(msg.response, null, 2))}>复制</button>
+                    </div>
                     <pre className="debug-content">{JSON.stringify(msg.response, null, 2)}</pre>
                   </div>
                 </div>
@@ -652,12 +774,20 @@ function SidePanelContent() {
 
       {selectedElements.length > 0 && (
         <div className="element-tags">
-          {selectedElements.map((el, index) => (
-            <div key={index} className="element-tag">
-              <span className="element-tag-text">{el.tagName}</span>
-              <span className="element-tag-remove" onClick={() => removeSelectedElement(index)}>×</span>
-            </div>
-          ))}
+          <div className="element-tags-header">
+            <button className="insert-all-btn" onClick={insertAllElements}>
+              插入全部
+            </button>
+          </div>
+          <div className="element-tags-list">
+            {selectedElements.map((el, index) => (
+              <div key={index} className="element-tag">
+                <span className="element-tag-text" title={el.selector}>{el.tagName}</span>
+                <span className="element-tag-insert" onClick={() => insertElementInfo(el, index)} title="插入到输入框">📥</span>
+                <span className="element-tag-remove" onClick={() => removeSelectedElement(index)}>×</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
