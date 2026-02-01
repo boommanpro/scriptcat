@@ -368,6 +368,7 @@ function SidePanelContent() {
       const response = await chrome.runtime.sendMessage({
         message: "ai-start-selection",
         tabId: tab.id,
+        mode: "visual" // 使用视觉选择模式
       });
 
       if (!response?.success) {
