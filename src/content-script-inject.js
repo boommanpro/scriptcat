@@ -282,18 +282,18 @@ function startVisualSelection() {
 
   selectionState.isSelecting = true;
   selectionState.selectedElements = [];
-  
+
   // 移除之前可能存在的所有高亮
   removeVisualHighlights();
-  
+
   // 为页面上所有可见元素添加视觉高亮
   addVisualHighlights();
-  
+
   // 添加点击事件监听器
   document.addEventListener("click", handleVisualElementClick, true);
-  
+
   document.body.style.cursor = "crosshair";
-  
+
   // 显示提示信息
   const info = document.createElement("div");
   info.id = "ai-selection-info";
@@ -329,70 +329,70 @@ function startVisualSelection() {
 
 function addVisualHighlights() {
   // 获取所有可见元素
-  const allElements = document.querySelectorAll('*');
+  const allElements = document.querySelectorAll("*");
   const visibleElements = [];
-  
+
   for (const element of allElements) {
     // 过滤掉一些不需要高亮的元素
     if (shouldHighlightElement(element)) {
       visibleElements.push(element);
-      
+
       // 为元素添加高亮边框
-      const highlight = document.createElement('div');
-      highlight.className = 'ai-visual-highlight';
-      highlight.style.position = 'absolute';
-      highlight.style.border = '2px dashed #52c41a';
-      highlight.style.backgroundColor = 'rgba(82, 196, 26, 0.1)';
-      highlight.style.pointerEvents = 'none';
-      highlight.style.zIndex = '2147483646';
-      highlight.style.transition = 'all 0.1s ease';
-      
+      const highlight = document.createElement("div");
+      highlight.className = "ai-visual-highlight";
+      highlight.style.position = "absolute";
+      highlight.style.border = "2px dashed #52c41a";
+      highlight.style.backgroundColor = "rgba(82, 196, 26, 0.1)";
+      highlight.style.pointerEvents = "none";
+      highlight.style.zIndex = "2147483646";
+      highlight.style.transition = "all 0.1s ease";
+
       // 绑定元素到高亮div
       highlight.__highlightedElement = element;
-      
+
       document.body.appendChild(highlight);
-      
+
       // 更新高亮位置
       updateHighlightPosition(highlight, element);
-      
+
       // 添加鼠标悬停效果
-      element.addEventListener('mouseenter', () => {
+      element.addEventListener("mouseenter", () => {
         if (!selectionState.isSelecting) return;
-        highlight.style.border = '2px solid #faad14';
-        highlight.style.backgroundColor = 'rgba(250, 173, 20, 0.2)';
-        
+        highlight.style.border = "2px solid #faad14";
+        highlight.style.backgroundColor = "rgba(250, 173, 20, 0.2)";
+
         // 显示元素信息
         const tooltip = createTooltip();
         const selector = getElementSelector(element);
         const tagName = element.tagName.toLowerCase();
         tooltip.textContent = `${tagName} ${selector}`;
-        
+
         const rect = element.getBoundingClientRect();
         const scrollX = window.scrollX || window.pageXOffset;
         const scrollY = window.scrollY || window.pageYOffset;
-        
+
         tooltip.style.left = `${rect.left + scrollX}px`;
         tooltip.style.top = `${rect.top + scrollY - 28}px`;
-        tooltip.style.display = 'block';
+        tooltip.style.display = "block";
       });
-      
-      element.addEventListener('mouseleave', () => {
+
+      element.addEventListener("mouseleave", () => {
         if (!selectionState.isSelecting) return;
-        highlight.style.border = '2px dashed #52c41a';
-        highlight.style.backgroundColor = 'rgba(82, 196, 26, 0.1)';
-        
+        highlight.style.border = "2px dashed #52c41a";
+        highlight.style.backgroundColor = "rgba(82, 196, 26, 0.1)";
+
         const tooltip = selectionState.tooltipElement;
         if (tooltip) {
-          tooltip.style.display = 'none';
+          tooltip.style.display = "none";
         }
       });
     }
   }
-  
+
   // 每200毫秒更新一次高亮位置，适应页面滚动等变化
   selectionState.highlightUpdater = setInterval(() => {
-    const highlights = document.querySelectorAll('.ai-visual-highlight');
-    highlights.forEach(highlight => {
+    const highlights = document.querySelectorAll(".ai-visual-highlight");
+    highlights.forEach((highlight) => {
       const element = highlight.__highlightedElement;
       if (element) {
         updateHighlightPosition(highlight, element);
@@ -403,18 +403,18 @@ function addVisualHighlights() {
 
 function updateHighlightPosition(highlight, element) {
   const rect = element.getBoundingClientRect();
-  
+
   // 检查元素是否在视口中以及是否可见
   if (rect.width === 0 || rect.height === 0 || rect.bottom < 0 || rect.top > window.innerHeight) {
-    highlight.style.display = 'none';
+    highlight.style.display = "none";
     return;
   }
-  
-  highlight.style.display = 'block';
-  highlight.style.left = (rect.left + (window.scrollX || window.pageXOffset)) + 'px';
-  highlight.style.top = (rect.top + (window.scrollY || window.pageYOffset)) + 'px';
-  highlight.style.width = rect.width + 'px';
-  highlight.style.height = rect.height + 'px';
+
+  highlight.style.display = "block";
+  highlight.style.left = rect.left + (window.scrollX || window.pageXOffset) + "px";
+  highlight.style.top = rect.top + (window.scrollY || window.pageYOffset) + "px";
+  highlight.style.width = rect.width + "px";
+  highlight.style.height = rect.height + "px";
 }
 
 function removeVisualHighlights() {
@@ -423,13 +423,13 @@ function removeVisualHighlights() {
     clearInterval(selectionState.highlightUpdater);
     selectionState.highlightUpdater = null;
   }
-  
+
   // 移除所有高亮元素
-  const highlights = document.querySelectorAll('.ai-visual-highlight');
-  highlights.forEach(highlight => highlight.remove());
-  
+  const highlights = document.querySelectorAll(".ai-visual-highlight");
+  highlights.forEach((highlight) => highlight.remove());
+
   // 移除提示信息
-  const info = document.getElementById('ai-selection-info');
+  const info = document.getElementById("ai-selection-info");
   if (info) {
     info.remove();
   }
@@ -437,30 +437,27 @@ function removeVisualHighlights() {
 
 function shouldHighlightElement(element) {
   // 不高亮的元素类型
-  const excludeTags = ['SCRIPT', 'STYLE', 'META', 'LINK', 'TITLE', 'NOSCRIPT'];
+  const excludeTags = ["SCRIPT", "STYLE", "META", "LINK", "TITLE", "NOSCRIPT"];
   if (excludeTags.includes(element.tagName)) return false;
-  
+
   // 不高亮隐藏元素
   const computedStyle = window.getComputedStyle(element);
-  if (computedStyle.display === 'none' || 
-      computedStyle.visibility === 'hidden' || 
-      computedStyle.opacity === '0') {
+  if (computedStyle.display === "none" || computedStyle.visibility === "hidden" || computedStyle.opacity === "0") {
     return false;
   }
-  
+
   // 不高亮尺寸为0的元素
   const rect = element.getBoundingClientRect();
   if (rect.width < 2 || rect.height < 2) return false;
-  
+
   // 不高亮非常小的元素（小于4x4像素）
   if (rect.width * rect.height < 16) return false;
-  
+
   // 检查是否在视口内
-  if (rect.bottom < 0 || rect.top > window.innerHeight || 
-      rect.right < 0 || rect.left > window.innerWidth) {
+  if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) {
     return false;
   }
-  
+
   return true;
 }
 
@@ -470,7 +467,7 @@ function handleVisualElementClick(event) {
 
   const element = event.target;
   const elementInfo = getElementInfo(element);
-  
+
   // 将选中的元素信息添加到选中列表
   selectionState.selectedElements = [elementInfo];
 
@@ -508,7 +505,7 @@ function stopSelection() {
 
   // 清除视觉高亮
   removeVisualHighlights();
-  
+
   const info = document.getElementById("ai-selection-info");
   if (info) {
     info.remove();

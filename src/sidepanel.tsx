@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { ConfigProvider } from "@arco-design/web-react";
 import "@arco-design/web-react/dist/css/arco.css";
 import "./sidepanel.css";
+import { searchKnowledgeBase, formatKnowledgeForPrompt } from "@App/pkg/utils/knowledge-base";
 
 interface SelectedElement {
   selector: string;
@@ -48,6 +49,7 @@ function SidePanelContent() {
   const [isSelecting, setIsSelecting] = React.useState(false);
   const [showDomainSelector, setShowDomainSelector] = React.useState(false);
   const [expandedMessages, setExpandedMessages] = React.useState<Set<string>>(new Set());
+  const [showHistoryPanel, setShowHistoryPanel] = React.useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -146,6 +148,27 @@ function SidePanelContent() {
     setDomains(domainList);
   };
 
+  const deleteConversation = async (domain: string) => {
+    try {
+      await chrome.storage.local.remove(`ai_conversation_${domain}`);
+      await refreshDomains();
+      if (domain === currentDomain) {
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error("Failed to delete conversation:", error);
+    }
+  };
+
+  const clearCurrentConversation = async () => {
+    try {
+      await chrome.storage.local.remove(`ai_conversation_${currentDomain}`);
+      setMessages([]);
+    } catch (error) {
+      console.error("Failed to clear conversation:", error);
+    }
+  };
+
   const toggleMessageSelection = (messageId: string) => {
     setSelectedMessages((prev) => {
       const newSet = new Set(prev);
@@ -219,25 +242,25 @@ function SidePanelContent() {
 
   const parseElementRefs = (content: string, elements: SelectedElement[]) => {
     const elementRefRegex = /\[(\d+)\]/g;
-    const parts: Array<{ type: 'text' | 'element-ref'; content: string; index?: number }> = [];
+    const parts: Array<{ type: "text" | "element-ref"; content: string; index?: number }> = [];
     let lastIndex = 0;
     let match;
 
     while ((match = elementRefRegex.exec(content)) !== null) {
       if (match.index > lastIndex) {
-        parts.push({ type: 'text', content: content.slice(lastIndex, match.index) });
+        parts.push({ type: "text", content: content.slice(lastIndex, match.index) });
       }
       const elementIndex = parseInt(match[1], 10) - 1;
       if (elementIndex >= 0 && elementIndex < elements.length) {
-        parts.push({ type: 'element-ref', content: match[0], index: elementIndex });
+        parts.push({ type: "element-ref", content: match[0], index: elementIndex });
       } else {
-        parts.push({ type: 'text', content: match[0] });
+        parts.push({ type: "text", content: match[0] });
       }
       lastIndex = elementRefRegex.lastIndex;
     }
 
     if (lastIndex < content.length) {
-      parts.push({ type: 'text', content: content.slice(lastIndex) });
+      parts.push({ type: "text", content: content.slice(lastIndex) });
     }
 
     return parts;
@@ -248,7 +271,7 @@ function SidePanelContent() {
       const idx = parseInt(num, 10) - 1;
       if (idx >= 0 && idx < elements.length) {
         const el = elements[idx];
-        return `[元素${num}] 选择器: ${el.selector}\n源代码: ${el.outerHTML || ''}`;
+        return `[元素${num}] 选择器: ${el.selector}\n源代码: ${el.outerHTML || ""}`;
       }
       return `[${num}]`;
     });
@@ -262,7 +285,7 @@ function SidePanelContent() {
 
     const context =
       selectedElements.length > 0
-        ? `\n\n用户选中的页面元素：\n${selectedElements.map((el, idx) => `[元素${idx + 1}] 选择器: ${el.selector}\n源代码: ${el.outerHTML || ''}`).join("\n\n")}`
+        ? `\n\n用户选中的页面元素：\n${selectedElements.map((el, idx) => `[元素${idx + 1}] 选择器: ${el.selector}\n源代码: ${el.outerHTML || ""}`).join("\n\n")}`
         : "";
 
     const userContent = processedMessage + context;
@@ -289,28 +312,41 @@ function SidePanelContent() {
         apiEndpoint: "http://localhost:1234/v1",
         apiKey: "",
         model: "qwen/qwen3-4b-2507",
+        enableKnowledgeBase: true,
       };
+
+      let systemPrompt =
+        config.systemPrompt ||
+        `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台运行的JavaScript代码。
+            规则：
+            1. 只返回符合用户需求的JavaScript代码
+            2. 代码必须用 \`\`\`javascript 和 \`\`\` 包裹
+            3. 代码应该完整、可直接运行
+            4. 如果需要操作页面元素，使用用户提供的选择器
+            5. 不要包含任何解释性文字，除非用户明确要求`;
+
+      if (config.enableKnowledgeBase) {
+        const knowledgeItems = searchKnowledgeBase(userMessage, 3);
+        if (knowledgeItems.length > 0) {
+          const knowledgeContext = formatKnowledgeForPrompt(knowledgeItems);
+          systemPrompt = `${systemPrompt}\n\n${knowledgeContext}`;
+        }
+      }
 
       const requestBody = {
         model: config.model,
         messages: [
           {
             role: "system",
-            content: `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台运行的JavaScript代码。
-            规则：
-            1. 只返回符合用户需求的JavaScript代码
-            2. 代码必须用 \`\`\`javascript 和 \`\`\` 包裹
-            3. 代码应该完整、可直接运行
-            4. 如果需要操作页面元素，使用用户提供的选择器
-            5. 不要包含任何解释性文字，除非用户明确要求`,
+            content: systemPrompt,
           },
           ...messagesWithContext.map((m) => ({
             role: m.role,
             content: m.content,
           })),
         ],
-        temperature: 0.7,
-        max_tokens: -1,
+        temperature: config.temperature || 0.7,
+        max_tokens: config.maxTokens || -1,
         stream: true,
       };
 
@@ -334,7 +370,7 @@ function SidePanelContent() {
 
       const decoder = new TextDecoder();
       let assistantMessage = "";
-      let fullResponseData: object[] = [];
+      const fullResponseData: object[] = [];
       const messageId = Date.now().toString();
 
       const assistantMsg: Message = {
@@ -429,7 +465,7 @@ function SidePanelContent() {
       const response = await chrome.runtime.sendMessage({
         message: "ai-start-selection",
         tabId: tab.id,
-        mode: "visual"
+        mode: "visual",
       });
 
       if (!response?.success) {
@@ -465,22 +501,20 @@ function SidePanelContent() {
 **选择器**: \`${element.selector}\`
 **源代码**:
 \`\`\`html
-${element.outerHTML || ''}
+${element.outerHTML || ""}
 \`\`\`
 `;
   };
 
   const insertElementInfo = (element: SelectedElement, index: number) => {
     const elementText = formatElementRef(element, index);
-    setInputValue((prev) => `${elementText}${prev ? `\n---\n\n${prev}` : ''}`);
+    setInputValue((prev) => `${elementText}${prev ? `\n---\n\n${prev}` : ""}`);
   };
 
   const insertAllElements = () => {
     if (selectedElements.length === 0) return;
-    const elementsText = selectedElements
-      .map((el, idx) => formatElementRef(el, idx))
-      .join('');
-    setInputValue((prev) => `${elementsText}${prev ? `\n---\n\n${prev}` : ''}`);
+    const elementsText = selectedElements.map((el, idx) => formatElementRef(el, idx)).join("");
+    setInputValue((prev) => `${elementsText}${prev ? `\n---\n\n${prev}` : ""}`);
   };
 
   React.useEffect(() => {
@@ -493,6 +527,17 @@ ${element.outerHTML || ''}
           return [...prev, ...uniqueNewElements];
         });
         setIsSelecting(false);
+      } else if (message.type === "AI_CHAT_WITH_TEXT") {
+        const selectedText = message.text || "";
+        if (selectedText) {
+          setInputValue((prev) => {
+            if (prev) {
+              return `${prev}\n\n选中的文本：\n${selectedText}`;
+            } else {
+              return `选中的文本：\n${selectedText}`;
+            }
+          });
+        }
       }
     };
 
@@ -509,7 +554,10 @@ ${element.outerHTML || ''}
       return { success: false, error: "No tab" };
     }
 
-    console.log("[SidePanel-ExecuteCode] Starting execution", { tabId: tab.id, codePreview: code.substring(0, 50) + "..." });
+    console.log("[SidePanel-ExecuteCode] Starting execution", {
+      tabId: tab.id,
+      codePreview: code.substring(0, 50) + "...",
+    });
 
     try {
       const result = await chrome.runtime.sendMessage({
@@ -548,17 +596,17 @@ ${element.outerHTML || ''}
           }
 
           function executeCode(code: string) {
-             console.log("[Page] Executing code:", code.substring(0, 100) + "...");
-             try {
-               const fn = new Function(code);
-               const result = fn();
-               console.log("[Page] Code execution success, result:", result);
-               return { success: true, result: String(result), type: typeof result };
-             } catch (error: any) {
-               console.error("[Page] Code execution failed:", error);
-               return { success: false, error: String(error), errorType: error.constructor.name };
-             }
-           }
+            console.log("[Page] Executing code:", code.substring(0, 100) + "...");
+            try {
+              const fn = new Function(code);
+              const result = fn();
+              console.log("[Page] Code execution success, result:", result);
+              return { success: true, result: String(result), type: typeof result };
+            } catch (error: any) {
+              console.error("[Page] Code execution failed:", error);
+              return { success: false, error: String(error), errorType: error.constructor.name };
+            }
+          }
 
           (window as any)[AI_SERVICE] = { execute: executeCode, serviceName: AI_SERVICE };
           console.log("[Page] AI Code Executor attached to window");
@@ -589,7 +637,9 @@ ${element.outerHTML || ''}
   };
 
   const handleRunCode = async (codeBlock: CodeBlock) => {
-    console.log("[SidePanel-HandleRunCode] User clicked run button", { codePreview: codeBlock.code.substring(0, 50) + "..." });
+    console.log("[SidePanel-HandleRunCode] User clicked run button", {
+      codePreview: codeBlock.code.substring(0, 50) + "...",
+    });
     const result = await executeCode(codeBlock.code);
     console.log("[SidePanel-HandleRunCode] ========== Final Result ==========");
     if (result && typeof result === "object" && "success" in result) {
@@ -635,14 +685,10 @@ ${element.outerHTML || ''}
     return (
       <div className="message-text">
         {parts.map((part, idx) => {
-          if (part.type === 'element-ref' && part.index !== undefined) {
+          if (part.type === "element-ref" && part.index !== undefined) {
             const el = selectedElements[part.index];
             return (
-              <span
-                key={idx}
-                className="element-ref-tag"
-                title={`${el?.tagName}: ${el?.selector}`}
-              >
+              <span key={idx} className="element-ref-tag" title={`${el?.tagName}: ${el?.selector}`}>
                 {part.content}
               </span>
             );
@@ -658,11 +704,20 @@ ${element.outerHTML || ''}
       <div className="ai-header">
         <h2>AI 对话</h2>
         <div className="header-actions">
+          <button className="history-btn" onClick={() => setShowHistoryPanel(true)} title="对话历史">
+            📜
+          </button>
           <button className="refresh-btn" onClick={refreshCurrentPage} title="刷新页面">
             ↻
           </button>
           <div className="domain-selector-container">
-            <button className="domain-selector-btn" onClick={() => { refreshDomains(); setShowDomainSelector(!showDomainSelector); }}>
+            <button
+              className="domain-selector-btn"
+              onClick={() => {
+                refreshDomains();
+                setShowDomainSelector(!showDomainSelector);
+              }}
+            >
               {currentDomain || "选择域名"} ▼
             </button>
             {showDomainSelector && (
@@ -692,18 +747,22 @@ ${element.outerHTML || ''}
             <div className="ai-empty-icon">🤖</div>
             <p>我是 AI 助手，可以帮你编写浏览器脚本</p>
             <p>告诉我你想实现什么功能吧！</p>
-            {messages.length > 0 && (
-              <p className="ai-empty-hint">勾选左侧消息可选择发送给 AI 的历史对话</p>
-            )}
+            {messages.length > 0 && <p className="ai-empty-hint">勾选左侧消息可选择发送给 AI 的历史对话</p>}
           </div>
         ) : (
           messages.map((msg) => (
             <div key={msg.id} className={`ai-message ${msg.role}`}>
-              <div className={`message-checkbox ${selectedMessages.has(msg.id) ? "checked" : ""}`} onClick={() => toggleMessageSelection(msg.id)}>
+              <div
+                className={`message-checkbox ${selectedMessages.has(msg.id) ? "checked" : ""}`}
+                onClick={() => toggleMessageSelection(msg.id)}
+              >
                 <input type="checkbox" checked={selectedMessages.has(msg.id)} readOnly />
               </div>
               {msg.role === "assistant" && msg.codeBlocks && msg.codeBlocks.length > 0 && (
-                <div className={`debug-toggle ${expandedMessages.has(msg.id) ? "expanded" : ""}`} onClick={() => toggleExpandedMessages(msg.id)}>
+                <div
+                  className={`debug-toggle ${expandedMessages.has(msg.id) ? "expanded" : ""}`}
+                  onClick={() => toggleExpandedMessages(msg.id)}
+                >
                   {expandedMessages.has(msg.id) ? "▼" : "▶"}
                 </div>
               )}
@@ -742,14 +801,24 @@ ${element.outerHTML || ''}
                   <div className="debug-section">
                     <div className="debug-header">
                       <span className="debug-title">Request</span>
-                      <button className="copy-btn" onClick={() => copyToClipboard(JSON.stringify(msg.request, null, 2))}>复制</button>
+                      <button
+                        className="copy-btn"
+                        onClick={() => copyToClipboard(JSON.stringify(msg.request, null, 2))}
+                      >
+                        复制
+                      </button>
                     </div>
                     <pre className="debug-content">{JSON.stringify(msg.request, null, 2)}</pre>
                   </div>
                   <div className="debug-section">
                     <div className="debug-header">
                       <span className="debug-title">Response</span>
-                      <button className="copy-btn" onClick={() => copyToClipboard(JSON.stringify(msg.response, null, 2))}>复制</button>
+                      <button
+                        className="copy-btn"
+                        onClick={() => copyToClipboard(JSON.stringify(msg.response, null, 2))}
+                      >
+                        复制
+                      </button>
                     </div>
                     <pre className="debug-content">{JSON.stringify(msg.response, null, 2)}</pre>
                   </div>
@@ -782,9 +851,15 @@ ${element.outerHTML || ''}
           <div className="element-tags-list">
             {selectedElements.map((el, index) => (
               <div key={index} className="element-tag">
-                <span className="element-tag-text" title={el.selector}>{el.tagName}</span>
-                <span className="element-tag-insert" onClick={() => insertElementInfo(el, index)} title="插入到输入框">📥</span>
-                <span className="element-tag-remove" onClick={() => removeSelectedElement(index)}>×</span>
+                <span className="element-tag-text" title={el.selector}>
+                  {el.tagName}
+                </span>
+                <span className="element-tag-insert" onClick={() => insertElementInfo(el, index)} title="插入到输入框">
+                  📥
+                </span>
+                <span className="element-tag-remove" onClick={() => removeSelectedElement(index)}>
+                  ×
+                </span>
               </div>
             ))}
           </div>
@@ -810,6 +885,56 @@ ${element.outerHTML || ''}
           发送
         </button>
       </div>
+
+      {showHistoryPanel && (
+        <div className="history-panel-overlay" onClick={() => setShowHistoryPanel(false)}>
+          <div className="history-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="history-panel-header">
+              <h3>对话历史</h3>
+              <button className="close-btn" onClick={() => setShowHistoryPanel(false)}>
+                ×
+              </button>
+            </div>
+            <div className="history-panel-content">
+              {domains.length === 0 ? (
+                <div className="history-empty">暂无对话历史</div>
+              ) : (
+                domains.map((domain) => (
+                  <div key={domain} className={`history-item ${domain === currentDomain ? "active" : ""}`}>
+                    <div className="history-item-main" onClick={() => handleSwitchDomain(domain)}>
+                      <span className="history-domain">{domain}</span>
+                      <button
+                        className="history-delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`确定要删除 ${domain} 的对话历史吗？`)) {
+                            deleteConversation(domain);
+                          }
+                        }}
+                        title="删除"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="history-panel-footer">
+              <button
+                className="clear-btn"
+                onClick={() => {
+                  if (confirm(`确定要清空当前域名 ${currentDomain} 的对话吗？`)) {
+                    clearCurrentConversation();
+                  }
+                }}
+              >
+                清空当前对话
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

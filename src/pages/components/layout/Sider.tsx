@@ -4,6 +4,7 @@ import ScriptList from "@App/pages/options/routes/ScriptList";
 import Setting from "@App/pages/options/routes/Setting";
 import SubscribeList from "@App/pages/options/routes/SubscribeList";
 import Tools from "@App/pages/options/routes/Tools";
+import AISetting from "@App/pages/options/routes/AISetting";
 import { Layout, Menu } from "@arco-design/web-react";
 import {
   IconCode,
@@ -16,6 +17,7 @@ import {
   IconSettings,
   IconSubscribe,
   IconTool,
+  IconRobot,
 } from "@arco-design/web-react/icon";
 import React, { useRef, useState } from "react";
 import { HashRouter, Route, Routes } from "react-router-dom";
@@ -70,6 +72,11 @@ const Sider: React.FC = () => {
             <CustomLink to="/tools" className="menu-tools">
               <MenuItem key="/tools">
                 <IconTool /> {t("tools")}
+              </MenuItem>
+            </CustomLink>
+            <CustomLink to="/ai-setting" className="menu-ai-setting">
+              <MenuItem key="/ai-setting">
+                <IconRobot /> AI设置
               </MenuItem>
             </CustomLink>
             <CustomLink to="/setting" className="menu-setting">
@@ -175,6 +182,7 @@ const Sider: React.FC = () => {
           <Route path="/subscribe" element={<SubscribeList />} />
           <Route path="/logger" element={<Logger />} />
           <Route path="/tools" element={<Tools />} />
+          <Route path="/ai-setting" element={<AISetting />} />
           <Route path="/setting" element={<Setting />} />
         </Routes>
       </Layout.Content>
