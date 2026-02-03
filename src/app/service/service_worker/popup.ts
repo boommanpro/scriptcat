@@ -96,7 +96,7 @@ export class PopupService {
     private runtime: RuntimeService,
     private scriptDAO: ScriptDAO,
     private systemConfig: SystemConfig
-  ) { }
+  ) {}
 
   // 将 ScriptMenu[] 转为 Chrome contextMenus.CreateProperties[]；同一 groupKey 仅保留一个实际显示项。
   genScriptMenuByTabMap(menuEntries: chrome.contextMenus.CreateProperties[], menu: ScriptMenu[]) {

@@ -583,40 +583,46 @@
 .debug-panel {
   width: 100%;
   margin-top: 8px;
-  padding: 12px;
+  padding: 0;
   background: #1e1e1e;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border: 1px solid #3d3d3d;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .debug-section {
-  margin-bottom: 12px;
+  margin-bottom: 0;
+  border-bottom: 1px solid #3d3d3d;
 }
 
 .debug-section:last-child {
-  margin-bottom: 0;
+  border-bottom: none;
 }
 
 .debug-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  padding: 8px 12px;
+  background: #2d2d2d;
+  border-bottom: 1px solid #3d3d3d;
 }
 
 .debug-title {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: #e0e0e0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .copy-btn {
-  padding: 2px 8px;
+  padding: 3px 8px;
   background: #3d3d3d;
   border: 1px solid #4d4d4d;
-  border-radius: 4px;
+  border-radius: 3px;
   color: #b0b0b0;
-  font-size: 11px;
+  font-size: 10px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -628,16 +634,22 @@
 
 .debug-content {
   margin: 0;
-  padding: 10px;
-  background: #2d2d2d;
-  border-radius: 4px;
+  padding: 10px 12px;
+  background: #1e1e1e;
   font-family: "SF Mono", Monaco, Consolas, monospace;
   font-size: 11px;
   color: #d4d4d4;
   overflow-x: auto;
-  max-height: 300px;
+  max-height: 0;
   white-space: pre-wrap;
   word-break: break-all;
+  line-height: 1.5;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.debug-section.expanded .debug-content {
+  max-height: 200px;
+  padding: 10px 12px;
 }
 
 .history-btn {

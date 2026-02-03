@@ -60,9 +60,10 @@ function SidePanelContent() {
         console.log("[SidePanel] Active tab found:", tab?.id, "url:", tab?.url);
         if (tab?.url) {
           const url = new URL(tab.url);
-          setCurrentDomain(url.hostname);
-          console.log("[SidePanel] Current domain:", url.hostname);
-          await loadConversation(url.hostname);
+          const domain = url.hostname;
+          setCurrentDomain(domain);
+          console.log("[SidePanel] Current domain:", domain);
+          await loadConversation(domain);
           await refreshDomains();
           console.log("[SidePanel] Conversation loaded, injecting execution service...");
           await injectExecutionService();
@@ -73,6 +74,7 @@ function SidePanelContent() {
         console.error("[SidePanel] Failed to initialize side panel:", error);
       }
     };
+
     initSidePanel();
   }, []);
 
@@ -370,7 +372,7 @@ function SidePanelContent() {
 
       const decoder = new TextDecoder();
       let assistantMessage = "";
-      const fullResponseData: object[] = [];
+      let fullResponseText = "";
       const messageId = Date.now().toString();
 
       const assistantMsg: Message = {
@@ -398,10 +400,10 @@ function SidePanelContent() {
 
             try {
               const parsed = JSON.parse(data);
-              fullResponseData.push(parsed);
               const content = parsed.choices?.[0]?.delta?.content;
               if (content) {
                 assistantMessage += content;
+                fullResponseText += content;
                 const codeBlocks = extractCodeBlocks(assistantMessage);
                 setMessages((prev) =>
                   prev.map((m) =>
@@ -409,7 +411,8 @@ function SidePanelContent() {
                   )
                 );
               }
-            } catch (_e) {}
+            } catch (_e) {
+            }
           }
         }
       }
@@ -419,7 +422,7 @@ function SidePanelContent() {
         ...assistantMsg,
         content: assistantMessage,
         codeBlocks: finalCodeBlocks,
-        response: { chunks: fullResponseData },
+        response: { text: fullResponseText },
       };
 
       setMessages((prev) => prev.map((m) => (m.id === messageId ? finalAssistantMsg : m)));
@@ -798,7 +801,7 @@ ${element.outerHTML || ""}
               </div>
               {msg.role === "assistant" && expandedMessages.has(msg.id) && (
                 <div className="debug-panel">
-                  <div className="debug-section">
+                  <div className={`debug-section ${expandedMessages.has(msg.id) ? "expanded" : ""}`}>
                     <div className="debug-header">
                       <span className="debug-title">Request</span>
                       <button
@@ -810,17 +813,27 @@ ${element.outerHTML || ""}
                     </div>
                     <pre className="debug-content">{JSON.stringify(msg.request, null, 2)}</pre>
                   </div>
-                  <div className="debug-section">
+                  <div className={`debug-section ${expandedMessages.has(msg.id) ? "expanded" : ""}`}>
                     <div className="debug-header">
                       <span className="debug-title">Response</span>
                       <button
                         className="copy-btn"
-                        onClick={() => copyToClipboard(JSON.stringify(msg.response, null, 2))}
+                        onClick={() => {
+                          const responseText =
+                            typeof msg.response === "object" && "text" in msg.response
+                              ? (msg.response as any).text
+                              : JSON.stringify(msg.response, null, 2);
+                          copyToClipboard(responseText);
+                        }}
                       >
                         复制
                       </button>
                     </div>
-                    <pre className="debug-content">{JSON.stringify(msg.response, null, 2)}</pre>
+                    <pre className="debug-content">
+                      {typeof msg.response === "object" && "text" in msg.response
+                        ? (msg.response as any).text
+                        : JSON.stringify(msg.response, null, 2)}
+                    </pre>
                   </div>
                 </div>
               )}

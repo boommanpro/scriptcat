@@ -112,7 +112,7 @@ const apiActions: {
         const box = document.createElement("div");
         box.id = "ai-selection-highlight-box";
         box.style.cssText =
-          "position:absolute;border:2px solid #1a73e8;background:rgba(26,115,232,0.1);box-shadow:0 0 0 1px rgba(26,115,232,0.3),inset 0 0 0 1px rgba(26,115,232,0.1);pointer-events:none;transition:all 0.15s ease-out;outline:1px solid rgba(26,115,232,0.2);";
+          "position:absolute;border:1px solid #4285f4;background:rgba(66,133,244,0.08);box-shadow:0 0 0 1px rgba(66,133,244,0.15),inset 0 0 0 1px rgba(66,133,244,0.05);pointer-events:none;transition:all 0.15s ease-out;outline:1px solid rgba(66,133,244,0.1);";
 
         overlay.appendChild(box);
         document.body.appendChild(overlay);
@@ -128,7 +128,7 @@ const apiActions: {
         const tooltip = document.createElement("div");
         tooltip.id = "ai-selection-tooltip";
         tooltip.style.cssText =
-          "position:fixed;padding:6px 10px;background:rgba(0,0,0,0.85);color:white;border-radius:4px;font-size:12px;font-family:system-ui,-apple-system,sans-serif;z-index:2147483647;pointer-events:none;white-space:nowrap;max-width:300px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,0.3);";
+          "position:fixed;padding:4px 8px;background:#4285f4;color:white;border-radius:3px;font-size:11px;font-family:'SF Mono',Monaco,'Courier New',monospace;font-weight:500;z-index:2147483647;pointer-events:none;white-space:nowrap;max-width:300px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 6px rgba(0,0,0,0.2);";
 
         document.body.appendChild(tooltip);
         selectionState.tooltipElement = tooltip;
@@ -354,14 +354,14 @@ const apiActions: {
         info.id = "ai-selection-info";
         info.innerHTML = `
           <div style="display: flex; align-items: center; gap: 8px; padding: 8px 16px;">
-            <span style="width: 12px; height: 12px; background: #52c41a; border-radius: 50%; animation: ai-pulse 1.5s infinite;"></span>
+            <span style="width: 12px; height: 12px; background: #1a73e8; border-radius: 50%; animation: ai-pulse 1.5s infinite;"></span>
             <span>点击任意高亮元素进行选择</span>
           </div>
           <style>
             @keyframes ai-pulse {
-              0% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4); }
-              70% { box-shadow: 0 0 0 10px rgba(82, 196, 26, 0); }
-              100% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0); }
+              0% { box-shadow: 0 0 0 0 rgba(26, 115, 232, 0.4); }
+              70% { box-shadow: 0 0 0 10px rgba(26, 115, 232, 0); }
+              100% { box-shadow: 0 0 0 0 rgba(26, 115, 232, 0); }
             }
           </style>
         `;
@@ -396,11 +396,12 @@ const apiActions: {
             const highlight = document.createElement("div");
             highlight.className = "ai-visual-highlight";
             highlight.style.position = "absolute";
-            highlight.style.border = "2px dashed #52c41a";
-            highlight.style.backgroundColor = "rgba(82, 196, 26, 0.1)";
+            highlight.style.border = "1px solid #4285f4";
+            highlight.style.backgroundColor = "rgba(66, 133, 244, 0.08)";
             highlight.style.pointerEvents = "none";
             highlight.style.zIndex = "2147483646";
             highlight.style.transition = "all 0.1s ease";
+            highlight.style.boxShadow = "0 0 0 1px rgba(66, 133, 244, 0.15), inset 0 0 0 1px rgba(66, 133, 244, 0.05)";
 
             // 绑定元素到高亮div
             highlight.__highlightedElement = element;
@@ -413,10 +414,9 @@ const apiActions: {
             // 添加鼠标悬停效果
             element.addEventListener("mouseenter", () => {
               if (!selectionState.isSelecting) return;
-              highlight.style.border = "2px solid #faad14";
-              highlight.style.backgroundColor = "rgba(250, 173, 20, 0.2)";
+              highlight.style.border = "1px solid #5e8ce6";
+              highlight.style.backgroundColor = "rgba(94, 140, 230, 0.15)";
 
-              // 显示元素信息
               const tooltip = createTooltip();
               const selector = getElementSelector(element);
               const tagName = element.tagName.toLowerCase();
@@ -433,8 +433,8 @@ const apiActions: {
 
             element.addEventListener("mouseleave", () => {
               if (!selectionState.isSelecting) return;
-              highlight.style.border = "2px dashed #52c41a";
-              highlight.style.backgroundColor = "rgba(82, 196, 26, 0.1)";
+              highlight.style.border = "1px solid #4285f4";
+              highlight.style.backgroundColor = "rgba(66, 133, 244, 0.08)";
 
               const tooltip = selectionState.tooltipElement;
               if (tooltip) {
@@ -537,15 +537,6 @@ const apiActions: {
 
         stopSelection();
       }
-
-      // 为自定义属性添加类型扩展
-      const extendElement = (element, property, value) => {
-        element[property] = value;
-      };
-
-      const getElementProperty = (element, property) => {
-        return element[property];
-      };
 
       function stopSelection() {
         if (!selectionState.isSelecting) return;
