@@ -96,7 +96,7 @@ export class PopupService {
     private runtime: RuntimeService,
     private scriptDAO: ScriptDAO,
     private systemConfig: SystemConfig
-  ) {}
+  ) { }
 
   // 将 ScriptMenu[] 转为 Chrome contextMenus.CreateProperties[]；同一 groupKey 仅保留一个实际显示项。
   genScriptMenuByTabMap(menuEntries: chrome.contextMenus.CreateProperties[], menu: ScriptMenu[]) {
@@ -204,6 +204,18 @@ export class PopupService {
               }
             });
           }
+        }
+      })
+      .then(async () => {
+        try {
+          await chrome.contextMenus.create({
+            id: "ai-chat",
+            title: "AI对话",
+            contexts: ["page", "selection"],
+          });
+          console.log("[AIContextMenu] AI对话菜单创建成功");
+        } catch (error) {
+          console.error("[AIContextMenu] 创建AI对话菜单失败:", error);
         }
       })
       .catch(console.warn);
@@ -690,15 +702,38 @@ export class PopupService {
       const lastError = chrome.runtime.lastError;
       if (lastError) {
         console.error("chrome.runtime.lastError in chrome.contextMenus.onClicked:", lastError);
-        // 出现错误不处理chrome菜单点击
         return;
       }
-      // 先以显示 id 逆向查回 SC 内部 id（防 Chrome 映射差异），再依 `scriptMenu_menu_${uuid}_${groupKey}` 解析来源。
-      const id1 = info.menuItemId;
-      const id2 = contextMenuConvMap2.get(`${id1}`) || id1;
+
+      const menuId = `${info.menuItemId}`;
+
+      if (menuId === "ai-chat") {
+        const selectedText = info.selectionText || "";
+        console.log("[AIContextMenu] AI对话菜单被点击，选中文本:", selectedText);
+
+        try {
+          await chrome.sidePanel.open({ windowId: tab!.windowId });
+
+          setTimeout(async () => {
+            try {
+              await chrome.runtime.sendMessage({
+                type: "AI_CHAT_WITH_TEXT",
+                text: selectedText,
+              });
+              console.log("[AIContextMenu] 消息已发送到SidePanel");
+            } catch (error) {
+              console.error("[AIContextMenu] 发送消息到SidePanel失败:", error);
+            }
+          }, 500);
+        } catch (error) {
+          console.error("[AIContextMenu] 打开SidePanel失败:", error);
+        }
+        return;
+      }
+
+      const id2 = contextMenuConvMap2.get(`${info.menuItemId}`) || info.menuItemId;
       const id9 = id2;
-      // scriptMenu_menu_${uuid}_${groupKey}`
-      if (!`${id9}`.startsWith("scriptMenu_menu_")) return; // 不处理非 scriptMenu_menu_ 开首的
+      if (!`${id9}`.startsWith("scriptMenu_menu_")) return;
       const menuIds = `${id9}`.split("_");
       if (menuIds.length === 4) {
         const [, , uuid, groupKey] = menuIds;

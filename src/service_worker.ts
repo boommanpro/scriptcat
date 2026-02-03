@@ -78,60 +78,6 @@ function main() {
   manager.initManager();
   // 初始化沙盒环境
   setupOffscreenDocument();
-  // 初始化右键菜单
-  initContextMenu();
-}
-
-function initContextMenu() {
-  const createMenu = async () => {
-    try {
-      await chrome.contextMenus.create({
-        id: "ai-chat",
-        title: "AI对话",
-        contexts: ["page", "selection"],
-      });
-      console.log("[ContextMenu] AI对话菜单创建成功");
-    } catch (error) {
-      if ((error as any).message?.includes("Duplicate menu item")) {
-        console.log("[ContextMenu] 菜单已存在，跳过创建");
-      } else {
-        console.error("[ContextMenu] 创建菜单失败:", error);
-      }
-    }
-  };
-
-  chrome.runtime.onInstalled.addListener(() => {
-    console.log("[ContextMenu] 扩展安装/更新，创建右键菜单");
-    createMenu();
-  });
-
-  chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-    if (info.menuItemId === "ai-chat" && tab?.id) {
-      const selectedText = info.selectionText || "";
-
-      console.log("[ContextMenu] AI对话菜单被点击，选中文本:", selectedText);
-
-      try {
-        await chrome.sidePanel.open({ tabId: tab.id });
-
-        setTimeout(async () => {
-          try {
-            await chrome.runtime.sendMessage({
-              type: "AI_CHAT_WITH_TEXT",
-              text: selectedText,
-            });
-            console.log("[ContextMenu] 消息已发送到SidePanel");
-          } catch (error) {
-            console.error("[ContextMenu] 发送消息到SidePanel失败:", error);
-          }
-        }, 500);
-      } catch (error) {
-        console.error("[ContextMenu] 打开SidePanel失败:", error);
-      }
-    }
-  });
-
-  createMenu();
 }
 
 const apiActions: {
