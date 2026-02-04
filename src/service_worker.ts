@@ -87,6 +87,134 @@ const apiActions: {
     const { domain } = message;
     return await fetchIconByDomain(domain);
   },
+  async "ai-create-session"(message: any, _sender: RuntimeMessageSender) {
+    const { domain, title } = message;
+    if (!domain) return { success: false, error: "No domain" };
+
+    try {
+      const result = await chrome.storage.local.get(`ai_conversations_${domain}`);
+      const data = result[`ai_conversations_${domain}`] || { sessions: [] };
+
+      const newSession = {
+        id: Date.now().toString(),
+        title: title || `对话 ${new Date().toLocaleString()}`,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        messages: [],
+      };
+
+      const updatedSessions = [...data.sessions, newSession];
+
+      await chrome.storage.local.set({
+        [`ai_conversations_${domain}`]: {
+          sessions: updatedSessions,
+          currentSessionId: newSession.id,
+        },
+      });
+
+      return { success: true, session: newSession };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+  async "ai-delete-session"(message: any, _sender: RuntimeMessageSender) {
+    const { domain, sessionId } = message;
+    if (!domain || !sessionId) return { success: false, error: "Missing domain or sessionId" };
+
+    try {
+      const result = await chrome.storage.local.get(`ai_conversations_${domain}`);
+      const data = result[`ai_conversations_${domain}`];
+
+      const updatedSessions = data.sessions.map((session: any) => {
+        if (session.id === sessionId) {
+          return { ...session, deleted: true };
+        }
+        return session;
+      });
+
+      const newCurrentSessionId = updatedSessions.find((s: any) => !s.deleted && s.id !== sessionId)?.id || "";
+
+      await chrome.storage.local.set({
+        [`ai_conversations_${domain}`]: {
+          sessions: updatedSessions,
+          currentSessionId: newCurrentSessionId,
+        },
+      });
+
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+  async "ai-rename-session"(message: any, _sender: RuntimeMessageSender) {
+    const { domain, sessionId, newTitle } = message;
+    if (!domain || !sessionId || !newTitle) return { success: false, error: "Missing required parameters" };
+
+    try {
+      const result = await chrome.storage.local.get(`ai_conversations_${domain}`);
+      const data = result[`ai_conversations_${domain}`];
+
+      const updatedSessions = data.sessions.map((session: any) => {
+        if (session.id === sessionId) {
+          return { ...session, title: newTitle, updatedAt: Date.now() };
+        }
+        return session;
+      });
+
+      await chrome.storage.local.set({
+        [`ai_conversations_${domain}`]: {
+          sessions: updatedSessions,
+          currentSessionId: data.currentSessionId,
+        },
+      });
+
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+  async "ai-get-sessions"(message: any, _sender: RuntimeMessageSender) {
+    const { domain } = message;
+    if (!domain) return { success: false, error: "No domain" };
+
+    try {
+      const result = await chrome.storage.local.get(`ai_conversations_${domain}`);
+      const data = result[`ai_conversations_${domain}`] || { sessions: [] };
+
+      const activeSessions = data.sessions.filter((s: any) => !s.deleted);
+
+      return { success: true, sessions: activeSessions, currentSessionId: data.currentSessionId };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+  async "ai-save-messages"(message: any, _sender: RuntimeMessageSender) {
+    const { domain, sessionId, messages } = message;
+    if (!domain || !sessionId || !messages) return { success: false, error: "Missing required parameters" };
+
+    try {
+      const result = await chrome.storage.local.get(`ai_conversations_${domain}`);
+      const data = result[`ai_conversations_${domain}`];
+
+      const updatedSessions = data.sessions.map((session: any) => {
+        if (session.id === sessionId) {
+          return { ...session, messages, updatedAt: Date.now() };
+        }
+        return session;
+      });
+
+      await chrome.storage.local.set({
+        [`ai_conversations_${domain}`]: {
+          sessions: updatedSessions,
+          currentSessionId: data.currentSessionId,
+        },
+      });
+
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
   async "ai-start-selection"(message: any, _sender: RuntimeMessageSender) {
     const { tabId } = message;
     if (!tabId) return { success: false, error: "No tabId" };

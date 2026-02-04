@@ -34,6 +34,20 @@ interface CodeBlock {
   saved?: boolean;
 }
 
+interface ConversationSession {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messages: Message[];
+  deleted?: boolean;
+}
+
+interface ConversationData {
+  sessions: ConversationSession[];
+  currentSessionId?: string;
+}
+
 const getLocale = (): any => {
   return {};
 };
@@ -50,6 +64,10 @@ function SidePanelContent() {
   const [showDomainSelector, setShowDomainSelector] = React.useState(false);
   const [expandedMessages, setExpandedMessages] = React.useState<Set<string>>(new Set());
   const [showHistoryPanel, setShowHistoryPanel] = React.useState(false);
+  const [aiConfig, setAiConfig] = React.useState<any>(null);
+  const [sessions, setSessions] = React.useState<ConversationSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = React.useState<string>("");
+  const [showSessionList, setShowSessionList] = React.useState(true);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -75,7 +93,35 @@ function SidePanelContent() {
       }
     };
 
+    const loadAIConfig = async () => {
+      try {
+        const result = await chrome.storage.local.get("ai_settings");
+        if (result.ai_settings) {
+          setAiConfig(result.ai_settings);
+          console.log("[SidePanel] AI config loaded:", result.ai_settings);
+        }
+      } catch (error) {
+        console.error("[SidePanel] Failed to load AI config:", error);
+      }
+    };
+
     initSidePanel();
+    loadAIConfig();
+  }, []);
+
+  React.useEffect(() => {
+    const handleStorageChanged = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
+      if (areaName === "local" && changes.ai_settings) {
+        const newConfig = changes.ai_settings.newValue;
+        setAiConfig(newConfig);
+        console.log("[SidePanel] AI config updated:", newConfig);
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChanged);
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChanged);
+    };
   }, []);
 
   React.useEffect(() => {
@@ -109,14 +155,25 @@ function SidePanelContent() {
 
   const loadConversation = async (domain: string) => {
     try {
-      const result = await chrome.storage.local.get(`ai_conversation_${domain}`);
-      if (result[`ai_conversation_${domain}`]) {
-        setMessages(result[`ai_conversation_${domain}`]);
+      const result = await chrome.storage.local.get(`ai_conversations_${domain}`);
+      const data: ConversationData = result[`ai_conversations_${domain}`] || { sessions: [] };
+      
+      const activeSessions = data.sessions.filter(s => !s.deleted);
+      setSessions(activeSessions);
+      
+      if (activeSessions.length > 0) {
+        const targetSessionId = data.currentSessionId || activeSessions[0].id;
+        const targetSession = activeSessions.find(s => s.id === targetSessionId) || activeSessions[0];
+        setCurrentSessionId(targetSession.id);
+        setMessages(targetSession.messages);
       } else {
+        setCurrentSessionId("");
         setMessages([]);
       }
     } catch (error) {
       console.error("Failed to load conversation:", error);
+      setSessions([]);
+      setCurrentSessionId("");
       setMessages([]);
     }
   };
@@ -126,8 +183,8 @@ function SidePanelContent() {
       const allStorage = await chrome.storage.local.get(null);
       const domainSet = new Set<string>();
       for (const key of Object.keys(allStorage)) {
-        if (key.startsWith("ai_conversation_")) {
-          const domain = key.replace("ai_conversation_", "");
+        if (key.startsWith("ai_conversations_")) {
+          const domain = key.replace("ai_conversations_", "");
           domainSet.add(domain);
         }
       }
@@ -152,9 +209,11 @@ function SidePanelContent() {
 
   const deleteConversation = async (domain: string) => {
     try {
-      await chrome.storage.local.remove(`ai_conversation_${domain}`);
+      await chrome.storage.local.remove(`ai_conversations_${domain}`);
       await refreshDomains();
       if (domain === currentDomain) {
+        setSessions([]);
+        setCurrentSessionId("");
         setMessages([]);
       }
     } catch (error) {
@@ -164,8 +223,27 @@ function SidePanelContent() {
 
   const clearCurrentConversation = async () => {
     try {
-      await chrome.storage.local.remove(`ai_conversation_${currentDomain}`);
+      if (!currentSessionId) return;
+      
+      const result = await chrome.storage.local.get(`ai_conversations_${currentDomain}`);
+      const data: ConversationData = result[`ai_conversations_${currentDomain}`];
+      
+      const updatedSessions = data.sessions.map(session => {
+        if (session.id === currentSessionId) {
+          return { ...session, messages: [], updatedAt: Date.now() };
+        }
+        return session;
+      });
+      
+      await chrome.storage.local.set({
+        [`ai_conversations_${currentDomain}`]: {
+          sessions: updatedSessions,
+          currentSessionId,
+        },
+      });
+      
       setMessages([]);
+      await loadConversation(currentDomain);
     } catch (error) {
       console.error("Failed to clear conversation:", error);
     }
@@ -220,11 +298,130 @@ function SidePanelContent() {
 
   const saveConversation = async (domain: string, msgs: Message[]) => {
     try {
+      const result = await chrome.storage.local.get(`ai_conversations_${domain}`);
+      const data: ConversationData = result[`ai_conversations_${domain}`] || { sessions: [] };
+      
+      const updatedSessions = data.sessions.map(session => {
+        if (session.id === currentSessionId) {
+          return {
+            ...session,
+            messages: msgs,
+            updatedAt: Date.now(),
+          };
+        }
+        return session;
+      });
+      
       await chrome.storage.local.set({
-        [`ai_conversation_${domain}`]: msgs,
+        [`ai_conversations_${domain}`]: {
+          sessions: updatedSessions,
+          currentSessionId,
+        },
       });
     } catch (error) {
       console.error("Failed to save conversation:", error);
+    }
+  };
+
+  const createSession = async () => {
+    try {
+      const newSession: ConversationSession = {
+        id: Date.now().toString(),
+        title: `对话 ${new Date().toLocaleString()}`,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        messages: [],
+      };
+      
+      const result = await chrome.storage.local.get(`ai_conversations_${currentDomain}`);
+      const data: ConversationData = result[`ai_conversations_${currentDomain}`] || { sessions: [] };
+      
+      const updatedSessions = [...data.sessions, newSession];
+      
+      await chrome.storage.local.set({
+        [`ai_conversations_${currentDomain}`]: {
+          sessions: updatedSessions,
+          currentSessionId: newSession.id,
+        },
+      });
+      
+      setCurrentSessionId(newSession.id);
+      setMessages([]);
+      await loadConversation(currentDomain);
+    } catch (error) {
+      console.error("Failed to create session:", error);
+    }
+  };
+
+  const switchSession = async (sessionId: string) => {
+    try {
+      const result = await chrome.storage.local.get(`ai_conversations_${currentDomain}`);
+      const data: ConversationData = result[`ai_conversations_${currentDomain}`];
+      
+      await chrome.storage.local.set({
+        [`ai_conversations_${currentDomain}`]: {
+          ...data,
+          currentSessionId: sessionId,
+        },
+      });
+      
+      setCurrentSessionId(sessionId);
+      const session = sessions.find(s => s.id === sessionId);
+      if (session) {
+        setMessages(session.messages);
+      }
+    } catch (error) {
+      console.error("Failed to switch session:", error);
+    }
+  };
+
+  const deleteSession = async (sessionId: string) => {
+    try {
+      const result = await chrome.storage.local.get(`ai_conversations_${currentDomain}`);
+      const data: ConversationData = result[`ai_conversations_${currentDomain}`];
+      
+      const updatedSessions = data.sessions.map(session => {
+        if (session.id === sessionId) {
+          return { ...session, deleted: true };
+        }
+        return session;
+      });
+      
+      await chrome.storage.local.set({
+        [`ai_conversations_${currentDomain}`]: {
+          sessions: updatedSessions,
+          currentSessionId: updatedSessions.find(s => !s.deleted && s.id !== sessionId)?.id || "",
+        },
+      });
+      
+      await loadConversation(currentDomain);
+    } catch (error) {
+      console.error("Failed to delete session:", error);
+    }
+  };
+
+  const renameSession = async (sessionId: string, newTitle: string) => {
+    try {
+      const result = await chrome.storage.local.get(`ai_conversations_${currentDomain}`);
+      const data: ConversationData = result[`ai_conversations_${currentDomain}`];
+      
+      const updatedSessions = data.sessions.map(session => {
+        if (session.id === sessionId) {
+          return { ...session, title: newTitle, updatedAt: Date.now() };
+        }
+        return session;
+      });
+      
+      await chrome.storage.local.set({
+        [`ai_conversations_${currentDomain}`]: {
+          sessions: updatedSessions,
+          currentSessionId,
+        },
+      });
+      
+      await loadConversation(currentDomain);
+    } catch (error) {
+      console.error("Failed to rename session:", error);
     }
   };
 
@@ -309,8 +506,7 @@ function SidePanelContent() {
     setSelectedMessages(new Set());
 
     try {
-      const configResult = await chrome.storage.local.get("ai_settings");
-      const config = configResult.ai_settings || {
+      const config = aiConfig || {
         apiEndpoint: "http://localhost:1234/v1",
         apiKey: "",
         model: "qwen/qwen3-4b-2507",
@@ -704,47 +900,90 @@ ${element.outerHTML || ""}
 
   return (
     <div className="ai-sidepanel">
-      <div className="ai-header">
-        <h2>AI 对话</h2>
-        <div className="header-actions">
-          <button className="history-btn" onClick={() => setShowHistoryPanel(true)} title="对话历史">
-            📜
-          </button>
-          <button className="refresh-btn" onClick={refreshCurrentPage} title="刷新页面">
-            ↻
-          </button>
-          <div className="domain-selector-container">
-            <button
-              className="domain-selector-btn"
-              onClick={() => {
-                refreshDomains();
-                setShowDomainSelector(!showDomainSelector);
-              }}
-            >
-              {currentDomain || "选择域名"} ▼
+      {showSessionList && (
+        <div className="ai-sidebar">
+          <div className="ai-sidebar-header">
+            <button className="new-chat-btn" onClick={createSession}>
+              + 新建对话
             </button>
-            {showDomainSelector && (
-              <div className="domain-dropdown">
-                {domains.length === 0 ? (
-                  <div className="domain-empty">暂无对话历史</div>
-                ) : (
-                  domains.map((domain) => (
-                    <div
-                      key={domain}
-                      className={`domain-item ${domain === currentDomain ? "active" : ""}`}
-                      onClick={() => handleSwitchDomain(domain)}
+            <button
+              className="toggle-sidebar-btn"
+              onClick={() => setShowSessionList(false)}
+              title="收起侧边栏"
+            >
+              ◀
+            </button>
+          </div>
+          <div className="ai-sidebar-content">
+            {sessions.length === 0 ? (
+              <div className="sidebar-empty">暂无对话</div>
+            ) : (
+              sessions.map((session) => (
+                <div
+                  key={session.id}
+                  className={`sidebar-session-item ${session.id === currentSessionId ? "active" : ""}`}
+                  onClick={() => switchSession(session.id)}
+                >
+                  <div className="sidebar-session-title">{session.title}</div>
+                  <div className="sidebar-session-actions">
+                    <button
+                      className="sidebar-action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const newTitle = prompt("请输入新的会话名称:", session.title);
+                        if (newTitle && newTitle.trim()) {
+                          renameSession(session.id, newTitle.trim());
+                        }
+                      }}
+                      title="重命名"
                     >
-                      {domain}
-                    </div>
-                  ))
-                )}
-              </div>
+                      ✏️
+                    </button>
+                    <button
+                      className="sidebar-action-btn delete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`确定要删除会话 "${session.title}" 吗？`)) {
+                          deleteSession(session.id);
+                        }
+                      }}
+                      title="删除"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                </div>
+              ))
             )}
           </div>
+          <div className="ai-sidebar-footer">
+            <div className="current-domain-badge">{currentDomain}</div>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="ai-messages">
+      <div className="ai-main">
+        <div className="ai-header">
+          <div className="header-left">
+            {!showSessionList && (
+              <button
+                className="toggle-sidebar-btn"
+                onClick={() => setShowSessionList(true)}
+                title="展开侧边栏"
+              >
+                ▶
+              </button>
+            )}
+            <h2>AI 对话</h2>
+          </div>
+          <div className="header-actions">
+            <button className="refresh-btn" onClick={refreshCurrentPage} title="刷新页面">
+              ↻
+            </button>
+          </div>
+        </div>
+
+        <div className="ai-messages">
         {messages.length === 0 ? (
           <div className="ai-empty">
             <div className="ai-empty-icon">🤖</div>
@@ -898,56 +1137,7 @@ ${element.outerHTML || ""}
           发送
         </button>
       </div>
-
-      {showHistoryPanel && (
-        <div className="history-panel-overlay" onClick={() => setShowHistoryPanel(false)}>
-          <div className="history-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="history-panel-header">
-              <h3>对话历史</h3>
-              <button className="close-btn" onClick={() => setShowHistoryPanel(false)}>
-                ×
-              </button>
-            </div>
-            <div className="history-panel-content">
-              {domains.length === 0 ? (
-                <div className="history-empty">暂无对话历史</div>
-              ) : (
-                domains.map((domain) => (
-                  <div key={domain} className={`history-item ${domain === currentDomain ? "active" : ""}`}>
-                    <div className="history-item-main" onClick={() => handleSwitchDomain(domain)}>
-                      <span className="history-domain">{domain}</span>
-                      <button
-                        className="history-delete-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm(`确定要删除 ${domain} 的对话历史吗？`)) {
-                            deleteConversation(domain);
-                          }
-                        }}
-                        title="删除"
-                      >
-                        🗑
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="history-panel-footer">
-              <button
-                className="clear-btn"
-                onClick={() => {
-                  if (confirm(`确定要清空当前域名 ${currentDomain} 的对话吗？`)) {
-                    clearCurrentConversation();
-                  }
-                }}
-              >
-                清空当前对话
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+    </div>
     </div>
   );
 }
