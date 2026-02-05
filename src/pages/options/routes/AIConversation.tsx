@@ -399,7 +399,7 @@ function AIConversation() {
       </Modal>
 
       <Drawer
-        title={`对话详情 - ${selectedSession?.title || '未选择会话'}`}
+        title={`对话详情 - ${selectedSession?.title || "未选择会话"}`}
         visible={showDetailDrawer}
         width={800}
         onCancel={() => {
@@ -418,7 +418,7 @@ function AIConversation() {
               </Space>
             </div>
             <div className="detail-messages">
-              {(!selectedSession.messages || selectedSession.messages.length === 0) ? (
+              {!selectedSession.messages || selectedSession.messages.length === 0 ? (
                 <Empty description="暂无消息" />
               ) : (
                 selectedSession.messages.map((msg: any, index: number) => (
@@ -429,9 +429,7 @@ function AIConversation() {
                     <div className="message-content">
                       <pre>{msg.content}</pre>
                     </div>
-                    <div className="message-time">
-                      {formatTime(msg.timestamp)}
-                    </div>
+                    <div className="message-time">{formatTime(msg.timestamp)}</div>
                   </div>
                 ))
               )}

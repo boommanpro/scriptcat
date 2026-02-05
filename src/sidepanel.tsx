@@ -68,6 +68,7 @@ function SidePanelContent() {
   const [sessions, setSessions] = React.useState<ConversationSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = React.useState<string>("");
   const [showSessionList, setShowSessionList] = React.useState(true);
+  const [initializedDomains, setInitializedDomains] = React.useState<Set<string>>(new Set());
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -162,10 +163,22 @@ function SidePanelContent() {
       const activeSessions = data.sessions.filter(s => !s.deleted);
       setSessions(activeSessions);
       
+      const isFirstLoad = !initializedDomains.has(domain);
+      if (isFirstLoad) {
+        setInitializedDomains(prev => new Set(prev).add(domain));
+      }
+      
       if (activeSessions.length === 0) {
-        console.log("[SidePanel-LoadConversation] No active sessions found");
-        setCurrentSessionId("");
-        setMessages([]);
+        if (isFirstLoad) {
+          console.log("[SidePanel-LoadConversation] No active sessions found, creating new session");
+          setCurrentSessionId("");
+          setMessages([]);
+          await createSession();
+        } else {
+          console.log("[SidePanel-LoadConversation] No active sessions found");
+          setCurrentSessionId("");
+          setMessages([]);
+        }
         return;
       }
       
@@ -208,6 +221,7 @@ function SidePanelContent() {
   };
 
   const handleSwitchDomain = async (domain: string) => {
+    console.log("[SidePanel-SwitchDomain] Switching to domain:", domain);
     setCurrentDomain(domain);
     await loadConversation(domain);
     setSelectedMessages(new Set());
@@ -336,6 +350,7 @@ function SidePanelContent() {
   };
 
   const createSession = async () => {
+    console.log("[SidePanel-CreateSession] Creating new session");
     try {
       const newSession: ConversationSession = {
         id: Date.now().toString(),
@@ -356,18 +371,26 @@ function SidePanelContent() {
           currentSessionId: newSession.id,
         },
       });
-
+      
+      console.log("[SidePanel-CreateSession] New session created:", newSession.id);
       setCurrentSessionId(newSession.id);
+      setMessages([]);
       await loadConversation(currentDomain);
     } catch (error) {
-      console.error("Failed to create session:", error);
+      console.error("[SidePanel-CreateSession] Failed to create session:", error);
     }
   };
 
   const switchSession = async (sessionId: string) => {
+    console.log("[SidePanel-SwitchSession] Switching to session:", sessionId);
     try {
       const result = await chrome.storage.local.get(`ai_conversations_${currentDomain}`);
       const data: ConversationData = result[`ai_conversations_${currentDomain}`];
+      
+      if (!data) {
+        console.error("[SidePanel-SwitchSession] No data found for domain:", currentDomain);
+        return;
+      }
       
       await chrome.storage.local.set({
         [`ai_conversations_${currentDomain}`]: {
@@ -377,12 +400,15 @@ function SidePanelContent() {
       });
       
       setCurrentSessionId(sessionId);
-      const session = sessions.find(s => s.id === sessionId);
+      const session = data.sessions.find(s => s.id === sessionId && !s.deleted);
       if (session) {
         setMessages(session.messages);
+      } else {
+        console.error("[SidePanel-SwitchSession] Session not found:", sessionId);
+        setMessages([]);
       }
     } catch (error) {
-      console.error("Failed to switch session:", error);
+      console.error("[SidePanel-SwitchSession] Failed to switch session:", error);
     }
   };
 
