@@ -27,7 +27,7 @@
 .new-chat-btn {
   flex: 1;
   padding: 8px 12px;
-  background: var(--color-primary-6);
+  background: var(--color-primary-6, #165dff);
   border: none;
   border-radius: 6px;
   color: white;
@@ -35,10 +35,13 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .new-chat-btn:hover {
-  background: var(--color-primary-5);
+  background: var(--color-primary-5, #4080ff);
 }
 
 .toggle-sidebar-btn {

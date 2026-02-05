@@ -344,9 +344,8 @@ function SidePanelContent() {
           currentSessionId: newSession.id,
         },
       });
-      
+
       setCurrentSessionId(newSession.id);
-      setMessages([]);
       await loadConversation(currentDomain);
     } catch (error) {
       console.error("Failed to create session:", error);
@@ -497,8 +496,10 @@ function SidePanelContent() {
     };
 
     const selectedHistoryMessages = messages.filter((m) => selectedMessages.has(m.id));
-
-    setMessages((prev) => [...prev, userMsg]);
+    
+    const allMessagesForAPI = [...messages, userMsg];
+    
+    setMessages(allMessagesForAPI);
     setInputValue("");
     setSelectedElements([]);
     setIsLoading(true);
@@ -542,7 +543,7 @@ function SidePanelContent() {
             role: "system",
             content: systemPrompt,
           },
-          ...messages.map((m) => ({
+          ...allMessagesForAPI.map((m) => ({
             role: m.role,
             content: m.content,
           })),
@@ -625,9 +626,9 @@ function SidePanelContent() {
         response: { text: fullResponseText },
       };
 
-      setMessages((prev) => prev.map((m) => (m.id === messageId ? finalAssistantMsg : m)));
-
-      await saveConversation(currentDomain, [...messages, finalAssistantMsg]);
+      const finalMessages = [...allMessagesForAPI, finalAssistantMsg];
+      setMessages(finalMessages);
+      await saveConversation(currentDomain, finalMessages);
     } catch (error) {
       console.error("API调用失败:", error);
       const errorMsg: Message = {
@@ -637,6 +638,8 @@ function SidePanelContent() {
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, errorMsg]);
+      const finalMessagesWithError = [...allMessagesForAPI, errorMsg];
+      await saveConversation(currentDomain, finalMessagesWithError);
     } finally {
       setIsLoading(false);
       setSelectedElements([]);

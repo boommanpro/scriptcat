@@ -11,7 +11,7 @@ import {
   Tag,
   Tooltip,
 } from "@arco-design/web-react";
-import { IconDelete, IconEdit, IconRefresh, IconSearch } from "@arco-design/web-react/icon";
+import { IconDelete, IconEdit, IconRefresh, IconSearch, IconMessage } from "@arco-design/web-react/icon";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -243,9 +243,20 @@ function AIConversation() {
     {
       title: "操作",
       key: "actions",
-      width: 150,
+      width: 200,
       render: (_: any, record: ConversationSession) => (
         <Space>
+          <Tooltip content="查看详情">
+            <Button
+              type="text"
+              size="small"
+              icon={<IconMessage />}
+              onClick={() => {
+                setSelectedSession(record);
+                setShowDetailDrawer(true);
+              }}
+            />
+          </Tooltip>
           <Tooltip content="重命名">
             <Button
               type="text"
