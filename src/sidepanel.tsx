@@ -154,6 +154,7 @@ function SidePanelContent() {
   }, [messages]);
 
   const loadConversation = async (domain: string) => {
+    console.log("[SidePanel-LoadConversation] Loading conversation for domain:", domain);
     try {
       const result = await chrome.storage.local.get(`ai_conversations_${domain}`);
       const data: ConversationData = result[`ai_conversations_${domain}`] || { sessions: [] };
@@ -161,17 +162,28 @@ function SidePanelContent() {
       const activeSessions = data.sessions.filter(s => !s.deleted);
       setSessions(activeSessions);
       
-      if (activeSessions.length > 0) {
-        const targetSessionId = data.currentSessionId || activeSessions[0].id;
-        const targetSession = activeSessions.find(s => s.id === targetSessionId) || activeSessions[0];
-        setCurrentSessionId(targetSession.id);
-        setMessages(targetSession.messages);
-      } else {
+      if (activeSessions.length === 0) {
+        console.log("[SidePanel-LoadConversation] No active sessions found");
         setCurrentSessionId("");
         setMessages([]);
+        return;
+      }
+      
+      const targetSessionId = data.currentSessionId || activeSessions[0].id;
+      const targetSession = activeSessions.find(s => s.id === targetSessionId);
+      
+      if (!targetSession) {
+        console.log("[SidePanel-LoadConversation] Target session not found, using first session");
+        const firstSession = activeSessions[0];
+        setCurrentSessionId(firstSession.id);
+        setMessages(firstSession.messages);
+      } else {
+        console.log("[SidePanel-LoadConversation] Target session found:", targetSession.title);
+        setCurrentSessionId(targetSession.id);
+        setMessages(targetSession.messages);
       }
     } catch (error) {
-      console.error("Failed to load conversation:", error);
+      console.error("[SidePanel-LoadConversation] Failed to load conversation:", error);
       setSessions([]);
       setCurrentSessionId("");
       setMessages([]);
@@ -575,17 +587,16 @@ function SidePanelContent() {
       let assistantMessage = "";
       let fullResponseText = "";
       const messageId = Date.now().toString();
+      let isFirstUpdate = true;
 
-      const assistantMsg: Message = {
+      setMessages((prev) => [...prev, {
         id: messageId,
         role: "assistant",
         content: "",
         timestamp: Date.now(),
         codeBlocks: [],
         request: requestBody,
-      };
-
-      setMessages((prev) => [...prev, assistantMsg]);
+      }]);
 
       while (true) {
         const { done, value } = await reader.read();
@@ -620,10 +631,12 @@ function SidePanelContent() {
 
       const finalCodeBlocks = extractCodeBlocks(assistantMessage);
       const finalAssistantMsg: Message = {
-        ...assistantMsg,
+        id: messageId,
+        role: "assistant",
         content: assistantMessage,
         codeBlocks: finalCodeBlocks,
         response: { text: fullResponseText },
+        timestamp: Date.now(),
       };
 
       const finalMessages = [...allMessagesForAPI, finalAssistantMsg];
