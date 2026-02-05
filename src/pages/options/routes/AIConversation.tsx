@@ -1,5 +1,17 @@
-import { Button, Card, Empty, Input, Modal, Space, Table, Tag, Tooltip, Message as ArcoMessage } from "@arco-design/web-react";
-import { IconDelete, IconEdit, IconSearch, IconRefresh } from "@arco-design/web-react/icon";
+import {
+  Button,
+  Card,
+  Drawer,
+  Empty,
+  Input,
+  Message as ArcoMessage,
+  Modal,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+} from "@arco-design/web-react";
+import { IconDelete, IconEdit, IconRefresh, IconSearch } from "@arco-design/web-react/icon";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -32,19 +44,30 @@ function AIConversation() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [showDetailDrawer, setShowDetailDrawer] = useState(false);
+  const [detailSession, setDetailSession] = useState<ConversationSession | null>(null);
 
   const loadAllConversations = async () => {
+    console.log("[AIConversation] Loading all conversations...");
     setLoading(true);
     try {
       const allStorage = await chrome.storage.local.get(null);
+      console.log("[AIConversation] Storage keys:", Object.keys(allStorage));
       const domainList: DomainConversations[] = [];
 
       for (const key of Object.keys(allStorage)) {
         if (key.startsWith("ai_conversations_")) {
           const domain = key.replace("ai_conversations_", "");
-          const data = allStorage[key] as ConversationData;
-          const activeSessions = data.sessions.filter(s => !s.deleted);
-          
+          const rawData = allStorage[key];
+
+          if (!rawData || typeof rawData !== "object") {
+            console.warn(`Invalid data for domain ${domain}, skipping`);
+            continue;
+          }
+
+          const data = rawData as ConversationData;
+          const activeSessions = data.sessions?.filter((s) => !s.deleted) || [];
+
           if (activeSessions.length > 0) {
             domainList.push({
               domain,
@@ -58,8 +81,9 @@ function AIConversation() {
       }
 
       domainList.sort((a, b) => b.domain.localeCompare(a.domain));
+      console.log("[AIConversation] Loaded domains:", domainList);
       setDomains(domainList);
-      
+
       if (domainList.length > 0 && !selectedDomain) {
         setSelectedDomain(domainList[0].domain);
       }
@@ -82,7 +106,7 @@ function AIConversation() {
       const result = await chrome.storage.local.get(`ai_conversations_${selectedDomain}`);
       const data = result[`ai_conversations_${selectedDomain}`] as ConversationData;
 
-      const updatedSessions = data.sessions.map(session => {
+      const updatedSessions = data.sessions.map((session) => {
         if (session.id === selectedSession.id) {
           return { ...session, deleted: true };
         }
@@ -113,7 +137,7 @@ function AIConversation() {
       const result = await chrome.storage.local.get(`ai_conversations_${selectedDomain}`);
       const data = result[`ai_conversations_${selectedDomain}`] as ConversationData;
 
-      const updatedSessions = data.sessions.map(session => {
+      const updatedSessions = data.sessions.map((session) => {
         if (session.id === selectedSession.id) {
           return { ...session, title: newTitle.trim(), updatedAt: Date.now() };
         }
@@ -147,7 +171,7 @@ function AIConversation() {
       await chrome.storage.local.remove(`ai_conversations_${domain}`);
       ArcoMessage.success("域名对话已删除");
       await loadAllConversations();
-      
+
       if (selectedDomain === domain) {
         setSelectedDomain("");
       }
@@ -162,7 +186,7 @@ function AIConversation() {
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
+
     if (days === 0) {
       return "今天 " + date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
     } else if (days === 1) {
@@ -174,11 +198,9 @@ function AIConversation() {
     }
   };
 
-  const filteredDomains = domains.filter(d => 
-    d.domain.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const filteredDomains = domains.filter((d) => d.domain.toLowerCase().includes(searchText.toLowerCase()));
 
-  const currentDomainData = domains.find(d => d.domain === selectedDomain);
+  const currentDomainData = domains.find((d) => d.domain === selectedDomain);
   const currentSessions = currentDomainData?.data.sessions || [];
 
   const columns = [
@@ -190,7 +212,9 @@ function AIConversation() {
         <Space>
           <span>{title}</span>
           {record.id === currentDomainData?.data.currentSessionId && (
-            <Tag color="arcoblue" size="small">当前</Tag>
+            <Tag color="arcoblue" size="small">
+              当前
+            </Tag>
           )}
         </Space>
       ),
@@ -265,11 +289,7 @@ function AIConversation() {
                 style={{ width: 300 }}
                 allowClear
               />
-              <Button
-                icon={<IconRefresh />}
-                onClick={loadAllConversations}
-                loading={loading}
-              >
+              <Button icon={<IconRefresh />} onClick={loadAllConversations} loading={loading}>
                 刷新
               </Button>
             </Space>
@@ -314,9 +334,7 @@ function AIConversation() {
             <div className="session-list flex-1">
               {selectedDomain ? (
                 <>
-                  <div className="text-sm font-medium mb-2">
-                    {selectedDomain} 的会话
-                  </div>
+                  <div className="text-sm font-medium mb-2">{selectedDomain} 的会话</div>
                   {currentSessions.length === 0 ? (
                     <Empty description="该域名暂无会话" />
                   ) : (
@@ -366,14 +384,50 @@ function AIConversation() {
         okText="确定"
         cancelText="取消"
       >
-        <Input
-          placeholder="请输入新的会话名称"
-          value={newTitle}
-          onChange={setNewTitle}
-          maxLength={100}
-          autoFocus
-        />
+        <Input placeholder="请输入新的会话名称" value={newTitle} onChange={setNewTitle} maxLength={100} autoFocus />
       </Modal>
+
+      <Drawer
+        title={`对话详情 - ${selectedSession?.title || '未选择会话'}`}
+        visible={showDetailDrawer}
+        width={800}
+        onCancel={() => {
+          setShowDetailDrawer(false);
+          setSelectedSession(null);
+        }}
+        footer={null}
+      >
+        {selectedSession && (
+          <div className="conversation-detail">
+            <div className="detail-header">
+              <Space>
+                <Tag color="arcoblue">消息数量: {selectedSession.messages?.length || 0}</Tag>
+                <Tag color="green">创建时间: {formatTime(selectedSession.createdAt)}</Tag>
+                <Tag color="orangered">更新时间: {formatTime(selectedSession.updatedAt)}</Tag>
+              </Space>
+            </div>
+            <div className="detail-messages">
+              {(!selectedSession.messages || selectedSession.messages.length === 0) ? (
+                <Empty description="暂无消息" />
+              ) : (
+                selectedSession.messages.map((msg: any, index: number) => (
+                  <div key={index} className={`detail-message ${msg.role}`}>
+                    <div className="message-role">
+                      {msg.role === "user" ? "用户" : msg.role === "assistant" ? "AI助手" : "系统"}
+                    </div>
+                    <div className="message-content">
+                      <pre>{msg.content}</pre>
+                    </div>
+                    <div className="message-time">
+                      {formatTime(msg.timestamp)}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 }

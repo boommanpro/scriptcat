@@ -497,13 +497,17 @@ function SidePanelContent() {
     };
 
     const selectedHistoryMessages = messages.filter((m) => selectedMessages.has(m.id));
-    const messagesWithContext = [...selectedHistoryMessages, userMsg];
 
     setMessages((prev) => [...prev, userMsg]);
     setInputValue("");
     setSelectedElements([]);
     setIsLoading(true);
     setSelectedMessages(new Set());
+
+    if (messages.length === 0 && currentSessionId) {
+      const newTitle = userMessage.trim().substring(0, 20) + (userMessage.length > 20 ? "..." : "");
+      await renameSession(currentSessionId, newTitle);
+    }
 
     try {
       const config = aiConfig || {
@@ -538,7 +542,7 @@ function SidePanelContent() {
             role: "system",
             content: systemPrompt,
           },
-          ...messagesWithContext.map((m) => ({
+          ...messages.map((m) => ({
             role: m.role,
             content: m.content,
           })),
@@ -623,7 +627,7 @@ function SidePanelContent() {
 
       setMessages((prev) => prev.map((m) => (m.id === messageId ? finalAssistantMsg : m)));
 
-      await saveConversation(currentDomain, [...messagesWithContext, finalAssistantMsg]);
+      await saveConversation(currentDomain, [...messages, finalAssistantMsg]);
     } catch (error) {
       console.error("API调用失败:", error);
       const errorMsg: Message = {
