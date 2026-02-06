@@ -4,7 +4,7 @@ import ScriptList from "@App/pages/options/routes/ScriptList";
 import Setting from "@App/pages/options/routes/Setting";
 import SubscribeList from "@App/pages/options/routes/SubscribeList";
 import Tools from "@App/pages/options/routes/Tools";
-import AIConversation from "@App/pages/options/routes/AIConversation";
+import AIConversation from "@App/pages/options/routes/AIConversation/index";
 import { Layout, Menu } from "@arco-design/web-react";
 import {
   IconCode,
@@ -18,7 +18,6 @@ import {
   IconSubscribe,
   IconTool,
   IconRobot,
-  IconMessage,
 } from "@arco-design/web-react/icon";
 import React, { useRef, useState } from "react";
 import { HashRouter, Route, Routes } from "react-router-dom";
