@@ -68,7 +68,7 @@ function SidePanelContent() {
   const [sessions, setSessions] = React.useState<ConversationSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = React.useState<string>("");
   const [showSessionList, setShowSessionList] = React.useState(true);
-  const [initializedDomains, setInitializedDomains] = React.useState<Set<string>>(new Set());
+  const [hasCreatedSession, setHasCreatedSession] = React.useState<Record<string, boolean>>({});
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -163,22 +163,17 @@ function SidePanelContent() {
       const activeSessions = data.sessions.filter(s => !s.deleted);
       setSessions(activeSessions);
       
-      const isFirstLoad = !initializedDomains.has(domain);
-      if (isFirstLoad) {
-        setInitializedDomains(prev => new Set(prev).add(domain));
-      }
-      
       if (activeSessions.length === 0) {
-        if (isFirstLoad) {
-          console.log("[SidePanel-LoadConversation] No active sessions found, creating new session");
+        if (hasCreatedSession[domain]) {
+          console.log("[SidePanel-LoadConversation] No active sessions found, showing empty state");
           setCurrentSessionId("");
           setMessages([]);
-          await createSession();
-        } else {
-          console.log("[SidePanel-LoadConversation] No active sessions found");
-          setCurrentSessionId("");
-          setMessages([]);
+          return;
         }
+        
+        console.log("[SidePanel-LoadConversation] No active sessions found, creating new session");
+        setHasCreatedSession(prev => ({ ...prev, [domain]: true }));
+        await createSession();
         return;
       }
       
