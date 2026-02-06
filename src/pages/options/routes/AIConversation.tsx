@@ -11,8 +11,9 @@ import {
   Tag,
   Tooltip,
   Switch,
+  Popconfirm,
 } from "@arco-design/web-react";
-import { IconDelete, IconEdit, IconRefresh, IconSearch, IconMessage, IconSettings } from "@arco-design/web-react/icon";
+import { IconDelete, IconEdit, IconRefresh, IconSearch, IconMessage, IconSettings, IconPlus, IconCheck } from "@arco-design/web-react/icon";
 import React, { useEffect, useState } from "react";
 
 interface ConversationSession {
@@ -34,7 +35,10 @@ interface DomainConversations {
   data: ConversationData;
 }
 
-interface AISettings {
+export interface AIConfig {
+  id: string;
+  name: string;
+  isDefault: boolean;
   apiEndpoint: string;
   apiKey: string;
   model: string;
@@ -57,21 +61,9 @@ function AIConversation() {
   const [showDetailDrawer, setShowDetailDrawer] = useState(false);
   // const [detailSession, setDetailSession] = useState<ConversationSession | null>(null); // 暂时注释掉未使用的状态
   const [showSettingModal, setShowSettingModal] = useState(false);
-  const [aiSettings, setAiSettings] = useState<AISettings>({
-    apiEndpoint: "http://localhost:1234/v1",
-    apiKey: "",
-    model: "qwen/qwen3-4b-2507",
-    systemPrompt: `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台运行的JavaScript代码。
-规则：
-1. 只返回符合用户需求的JavaScript代码
-2. 代码必须用 \`\`\`javascript 和 \`\`\` 包裹
-3. 代码应该完整、可直接运行
-4. 如果需要操作页面元素，使用用户提供的选择器
-5. 不要包含任何解释性文字，除非用户明确要求`,
-    temperature: 0.7,
-    maxTokens: -1,
-    enableKnowledgeBase: true,
-  });
+  const [aiConfigs, setAiConfigs] = useState<AIConfig[]>([]);
+  const [editingConfig, setEditingConfig] = useState<AIConfig | null>(null);
+  const [showConfigEditor, setShowConfigEditor] = useState(false);
 
   const loadAllConversations = async () => {
     console.log("[AIConversation] Loading all conversations...");
@@ -128,13 +120,102 @@ function AIConversation() {
 
   const loadAISettings = async () => {
     try {
-      const result = await chrome.storage.local.get("ai_settings");
-      if (result.ai_settings) {
-        setAiSettings(result.ai_settings);
+      const result = await chrome.storage.local.get(["ai_configs", "ai_settings"]);
+      
+      if (result.ai_configs && Array.isArray(result.ai_configs)) {
+        setAiConfigs(result.ai_configs);
+      } else if (result.ai_settings) {
+        const oldSettings = result.ai_settings;
+        const newConfig: AIConfig = {
+          id: "default",
+          name: "默认配置",
+          isDefault: true,
+          apiEndpoint: oldSettings.apiEndpoint || "http://localhost:1234/v1",
+          apiKey: oldSettings.apiKey || "",
+          model: oldSettings.model || "qwen/qwen3-4b-2507",
+          systemPrompt: oldSettings.systemPrompt || `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台运行的JavaScript代码。
+规则：
+1. 只返回符合用户需求的JavaScript代码
+2. 代码必须用 \`\`\`javascript 和 \`\`\` 包裹
+3. 代码应该完整、可直接运行
+4. 如果需要操作页面元素，使用用户提供的选择器
+5. 不要包含任何解释性文字，除非用户明确要求`,
+          temperature: oldSettings.temperature ?? 0.7,
+          maxTokens: oldSettings.maxTokens ?? -1,
+          enableKnowledgeBase: oldSettings.enableKnowledgeBase ?? true,
+        };
+        const configs = [newConfig];
+        setAiConfigs(configs);
+        await chrome.storage.local.set({ ai_configs: configs });
+        await chrome.storage.local.remove("ai_settings");
       }
     } catch (error) {
       console.error("Failed to load AI settings:", error);
     }
+  };
+
+  const saveAiConfigs = async (configs: AIConfig[]) => {
+    await chrome.storage.local.set({ ai_configs: configs });
+    setAiConfigs(configs);
+  };
+
+  const handleAddConfig = () => {
+    const newConfig: AIConfig = {
+      id: Date.now().toString(),
+      name: "新配置",
+      isDefault: false,
+      apiEndpoint: "http://localhost:1234/v1",
+      apiKey: "",
+      model: "qwen/qwen3-4b-2507",
+      systemPrompt: `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台运行的JavaScript代码。
+规则：
+1. 只返回符合用户需求的JavaScript代码
+2. 代码必须用 \`\`\`javascript 和 \`\`\` 包裹
+3. 代码应该完整、可直接运行
+4. 如果需要操作页面元素，使用用户提供的选择器
+5. 不要包含任何解释性文字，除非用户明确要求`,
+      temperature: 0.7,
+      maxTokens: -1,
+      enableKnowledgeBase: true,
+    };
+    setEditingConfig(newConfig);
+    setShowConfigEditor(true);
+  };
+
+  const handleEditConfig = (config: AIConfig) => {
+    setEditingConfig({ ...config });
+    setShowConfigEditor(true);
+  };
+
+  const handleSaveConfig = async () => {
+    if (!editingConfig) return;
+    
+    let configs: AIConfig[];
+    if (aiConfigs.find(c => c.id === editingConfig.id)) {
+      configs = aiConfigs.map(c => c.id === editingConfig.id ? editingConfig : c);
+    } else {
+      configs = [...aiConfigs, editingConfig];
+    }
+    
+    await saveAiConfigs(configs);
+    setShowConfigEditor(false);
+    setEditingConfig(null);
+    ArcoMessage.success("配置已保存");
+  };
+
+  const handleDeleteConfig = async (id: string) => {
+    const configs = aiConfigs.filter(c => c.id !== id);
+    await saveAiConfigs(configs);
+    ArcoMessage.success("配置已删除");
+  };
+
+  const handleSetDefault = async (id: string) => {
+    const configs = aiConfigs.map(c => ({
+      ...c,
+      isDefault: c.id === id
+    }));
+    await saveAiConfigs(configs);
+    ArcoMessage.success("已设为默认配置");
   };
 
   const handleDeleteSession = async () => {
@@ -479,23 +560,148 @@ function AIConversation() {
         )}
       </Drawer>
 
-      {/* AI设置弹窗 */}
+      {/* AI配置管理弹窗 */}
       <Modal
-        title="AI对话配置"
+        title="AI配置管理"
         visible={showSettingModal}
         onCancel={() => setShowSettingModal(false)}
         footer={null}
-        width={800}
+        width={1100}
       >
-        <div className="ai-setting-modal">
+        <div className="ai-config-modal">
+          <div className="flex justify-between items-center mb-4">
+            <div className="text-sm text-gray-500">
+              共 {aiConfigs.length} 个配置
+            </div>
+            <Button icon={<IconPlus />} onClick={handleAddConfig}>
+              新增配置
+            </Button>
+          </div>
+
+          {aiConfigs.length === 0 ? (
+            <Empty description="暂无AI配置" />
+          ) : (
+            <Table
+              data={aiConfigs}
+              rowKey="id"
+              size="small"
+              border={true}
+              columns={[
+                {
+                  title: "名称",
+                  dataIndex: "name",
+                  key: "name",
+                  render: (name: string, record: AIConfig) => (
+                    <Space>
+                      <span>{name}</span>
+                      {record.isDefault && (
+                        <Tag color="arcoblue" size="small">
+                          <IconCheck /> 默认
+                        </Tag>
+                      )}
+                    </Space>
+                  ),
+                },
+                {
+                  title: "模型",
+                  dataIndex: "model",
+                  key: "model",
+                  width: 250,
+                },
+                {
+                  title: "API端点",
+                  dataIndex: "apiEndpoint",
+                  key: "apiEndpoint",
+                  width: 280,
+                  render: (endpoint: string) => (
+                    <Tooltip content={endpoint}>
+                      <span className="truncate block w-full">{endpoint}</span>
+                    </Tooltip>
+                  ),
+                },
+                {
+                  title: "操作",
+                  key: "actions",
+                  width: 200,
+                  render: (_: any, record: AIConfig) => (
+                    <Space>
+                      {!record.isDefault && (
+                        <Tooltip content="设为默认">
+                          <Button
+                            type="text"
+                            size="small"
+                            onClick={() => handleSetDefault(record.id)}
+                          >
+                            设为默认
+                          </Button>
+                        </Tooltip>
+                      )}
+                      <Tooltip content="编辑">
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<IconEdit />}
+                          onClick={() => handleEditConfig(record)}
+                        />
+                      </Tooltip>
+                      {!record.isDefault && (
+                        <Tooltip content="删除">
+                          <Popconfirm
+                            title="确定要删除此配置吗？"
+                            onOk={() => handleDeleteConfig(record.id)}
+                          >
+                            <Button
+                              type="text"
+                              size="small"
+                              status="danger"
+                              icon={<IconDelete />}
+                            />
+                          </Popconfirm>
+                        </Tooltip>
+                      )}
+                    </Space>
+                  ),
+                },
+              ]}
+            />
+          )}
+        </div>
+      </Modal>
+
+      {/* AI配置编辑器弹窗 */}
+      <Modal
+        title={editingConfig?.id ? "编辑AI配置" : "新增AI配置"}
+        visible={showConfigEditor}
+        onOk={handleSaveConfig}
+        onCancel={() => {
+          setShowConfigEditor(false);
+          setEditingConfig(null);
+        }}
+        okText="保存"
+        cancelText="取消"
+        width={1000}
+      >
+        {editingConfig && (
           <Space direction="vertical" size={20} className="w-full">
+            <div className="flex items-start justify-between">
+              <div className="flex flex-col gap-3 flex-1">
+                <span className="font-medium mb-1">配置名称</span>
+                <Input
+                  placeholder="例如: GPT-4 通用配置"
+                  value={editingConfig.name}
+                  onChange={(value) => setEditingConfig({ ...editingConfig, name: value })}
+                />
+              </div>
+              <span className="text-xs max-w-60 text-right ml-6 flex-shrink-">用于识别此配置的名称</span>
+            </div>
+
             <div className="flex items-start justify-between">
               <div className="flex flex-col gap-3 flex-1">
                 <span className="font-medium mb-1">API端点</span>
                 <Input
                   placeholder="例如: http://localhost:1234/v1"
-                  value={aiSettings.apiEndpoint}
-                  onChange={(value) => setAiSettings({ ...aiSettings, apiEndpoint: value })}
+                  value={editingConfig.apiEndpoint}
+                  onChange={(value) => setEditingConfig({ ...editingConfig, apiEndpoint: value })}
                 />
               </div>
               <span className="text-xs max-w-60 text-right ml-6 flex-shrink-0">OpenAI兼容的API端点地址</span>
@@ -506,8 +712,8 @@ function AIConversation() {
                 <span className="font-medium mb-1">API密钥</span>
                 <Input.Password
                   placeholder="可选，如果API需要认证"
-                  value={aiSettings.apiKey}
-                  onChange={(value) => setAiSettings({ ...aiSettings, apiKey: value })}
+                  value={editingConfig.apiKey}
+                  onChange={(value) => setEditingConfig({ ...editingConfig, apiKey: value })}
                 />
               </div>
               <span className="text-xs max-w-60 text-right ml-6 flex-shrink-0">如果API需要认证，请提供密钥</span>
@@ -518,8 +724,8 @@ function AIConversation() {
                 <span className="font-medium mb-1">模型名称</span>
                 <Input
                   placeholder="例如: gpt-3.5-turbo"
-                  value={aiSettings.model}
-                  onChange={(value) => setAiSettings({ ...aiSettings, model: value })}
+                  value={editingConfig.model}
+                  onChange={(value) => setEditingConfig({ ...editingConfig, model: value })}
                 />
               </div>
               <span className="text-xs max-w-60 text-right ml-6 flex-shrink-0">要使用的AI模型名称</span>
@@ -531,8 +737,8 @@ function AIConversation() {
                 <Input.TextArea
                   placeholder="系统提示词，定义AI的行为和角色"
                   autoSize={{ minRows: 6, maxRows: 12 }}
-                  value={aiSettings.systemPrompt}
-                  onChange={(value) => setAiSettings({ ...aiSettings, systemPrompt: value })}
+                  value={editingConfig.systemPrompt}
+                  onChange={(value) => setEditingConfig({ ...editingConfig, systemPrompt: value })}
                 />
               </div>
               <span className="text-xs max-w-60 text-right ml-6 flex-shrink-0">定义AI助手的行为和角色</span>
@@ -546,11 +752,11 @@ function AIConversation() {
                   min={0}
                   max={2}
                   step={0.1}
-                  value={aiSettings.temperature.toString()}
+                  value={editingConfig.temperature.toString()}
                   onChange={(value) => {
                     const num = parseFloat(value);
                     if (!isNaN(num) && num >= 0 && num <= 2) {
-                      setAiSettings({ ...aiSettings, temperature: num });
+                      setEditingConfig({ ...editingConfig, temperature: num });
                     }
                   }}
                 />
@@ -564,11 +770,11 @@ function AIConversation() {
                 <Input
                   type="number"
                   placeholder="-1表示无限制"
-                  value={aiSettings.maxTokens.toString()}
+                  value={editingConfig.maxTokens.toString()}
                   onChange={(value) => {
                     const num = parseInt(value, 10);
                     if (!isNaN(num)) {
-                      setAiSettings({ ...aiSettings, maxTokens: num });
+                      setEditingConfig({ ...editingConfig, maxTokens: num });
                     }
                   }}
                 />
@@ -580,8 +786,8 @@ function AIConversation() {
               <div className="flex flex-col gap-3 flex-1">
                 <span className="font-medium mb-1">启用知识库</span>
                 <Switch
-                  checked={aiSettings.enableKnowledgeBase}
-                  onChange={(checked) => setAiSettings({ ...aiSettings, enableKnowledgeBase: checked })}
+                  checked={editingConfig.enableKnowledgeBase}
+                  onChange={(checked) => setEditingConfig({ ...editingConfig, enableKnowledgeBase: checked })}
                 />
               </div>
               <span className="text-xs max-w-60 text-right ml-6 flex-shrink-0">启用后，AI将使用ScriptCat知识库</span>
@@ -590,20 +796,7 @@ function AIConversation() {
             <Space direction="horizontal" className="w-full pt-4" size={12}>
               <Button
                 type="primary"
-                loading={loading}
-                onClick={async () => {
-                  setLoading(true);
-                  try {
-                    await chrome.storage.local.set({ ai_settings: aiSettings });
-                    ArcoMessage.success("AI配置保存成功");
-                    setShowSettingModal(false);
-                  } catch (error) {
-                    ArcoMessage.error("保存失败");
-                    console.error("Failed to save AI settings:", error);
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
+                onClick={handleSaveConfig}
               >
                 保存配置
               </Button>
@@ -611,11 +804,11 @@ function AIConversation() {
                 onClick={async () => {
                   setLoading(true);
                   try {
-                    const response = await fetch(`${aiSettings.apiEndpoint}/models`, {
+                    const response = await fetch(`${editingConfig.apiEndpoint}/models`, {
                       method: "GET",
                       headers: {
                         "Content-Type": "application/json",
-                        ...(aiSettings.apiKey && { Authorization: `Bearer ${aiSettings.apiKey}` }),
+                        ...(editingConfig.apiKey && { Authorization: `Bearer ${editingConfig.apiKey}` }),
                       },
                     });
 
@@ -637,31 +830,9 @@ function AIConversation() {
               >
                 测试连接
               </Button>
-              <Button
-                onClick={() => {
-                  setAiSettings({
-                    apiEndpoint: "http://localhost:1234/v1",
-                    apiKey: "",
-                    model: "qwen/qwen3-4b-2507",
-                    systemPrompt: `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台运行的JavaScript代码。
-规则：
-1. 只返回符合用户需求的JavaScript代码
-2. 代码必须用 \`\`\`javascript 和 \`\`\` 包裹
-3. 代码应该完整、可直接运行
-4. 如果需要操作页面元素，使用用户提供的选择器
-5. 不要包含任何解释性文字，除非用户明确要求`,
-                    temperature: 0.7,
-                    maxTokens: -1,
-                    enableKnowledgeBase: true,
-                  });
-                  ArcoMessage.info("已重置为默认配置");
-                }}
-              >
-                重置默认
-              </Button>
             </Space>
           </Space>
-        </div>
+        )}
       </Modal>
     </div>
   );

@@ -4,7 +4,6 @@ import ScriptList from "@App/pages/options/routes/ScriptList";
 import Setting from "@App/pages/options/routes/Setting";
 import SubscribeList from "@App/pages/options/routes/SubscribeList";
 import Tools from "@App/pages/options/routes/Tools";
-import AISetting from "@App/pages/options/routes/AISetting";
 import AIConversation from "@App/pages/options/routes/AIConversation";
 import { Layout, Menu } from "@arco-design/web-react";
 import {
@@ -76,14 +75,9 @@ const Sider: React.FC = () => {
                 <IconTool /> {t("tools")}
               </MenuItem>
             </CustomLink>
-            <CustomLink to="/ai-setting" className="menu-ai-setting">
-              <MenuItem key="/ai-setting">
-                <IconRobot /> AI设置
-              </MenuItem>
-            </CustomLink>
             <CustomLink to="/ai-conversation" className="menu-ai-conversation">
               <MenuItem key="/ai-conversation">
-                <IconMessage /> AI对话
+                <IconRobot /> AI设置
               </MenuItem>
             </CustomLink>
             <CustomLink to="/setting" className="menu-setting">
@@ -189,7 +183,6 @@ const Sider: React.FC = () => {
           <Route path="/subscribe" element={<SubscribeList />} />
           <Route path="/logger" element={<Logger />} />
           <Route path="/tools" element={<Tools />} />
-          <Route path="/ai-setting" element={<AISetting />} />
           <Route path="/ai-conversation" element={<AIConversation />} />
           <Route path="/setting" element={<Setting />} />
         </Routes>

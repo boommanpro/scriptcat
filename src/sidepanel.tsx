@@ -1,9 +1,22 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { ConfigProvider } from "@arco-design/web-react";
+import { ConfigProvider, Select, Tooltip, Tag } from "@arco-design/web-react";
 import "@arco-design/web-react/dist/css/arco.css";
 import "./sidepanel.css";
 import { searchKnowledgeBase, formatKnowledgeForPrompt } from "@App/pkg/utils/knowledge-base";
+
+interface AIConfig {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  apiEndpoint: string;
+  apiKey: string;
+  model: string;
+  systemPrompt: string;
+  temperature: number;
+  maxTokens: number;
+  enableKnowledgeBase: boolean;
+}
 
 interface SelectedElement {
   selector: string;
@@ -64,7 +77,8 @@ function SidePanelContent() {
   const [showDomainSelector, setShowDomainSelector] = React.useState(false);
   const [expandedMessages, setExpandedMessages] = React.useState<Set<string>>(new Set());
   const [showHistoryPanel, setShowHistoryPanel] = React.useState(false);
-  const [aiConfig, setAiConfig] = React.useState<any>(null);
+  const [aiConfigs, setAiConfigs] = React.useState<AIConfig[]>([]);
+  const [selectedConfigId, setSelectedConfigId] = React.useState<string>("");
   const [sessions, setSessions] = React.useState<ConversationSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = React.useState<string>("");
   const [showSessionList, setShowSessionList] = React.useState(true);
@@ -96,10 +110,44 @@ function SidePanelContent() {
 
     const loadAIConfig = async () => {
       try {
-        const result = await chrome.storage.local.get("ai_settings");
-        if (result.ai_settings) {
-          setAiConfig(result.ai_settings);
-          console.log("[SidePanel] AI config loaded:", result.ai_settings);
+        const result = await chrome.storage.local.get(["ai_configs", "ai_settings"]);
+        
+        if (result.ai_configs && Array.isArray(result.ai_configs)) {
+          const configs = result.ai_configs;
+          setAiConfigs(configs);
+          const defaultConfig = configs.find(c => c.isDefault);
+          if (defaultConfig) {
+            setSelectedConfigId(defaultConfig.id);
+          } else if (configs.length > 0) {
+            setSelectedConfigId(configs[0].id);
+          }
+          console.log("[SidePanel] AI configs loaded:", configs);
+        } else if (result.ai_settings) {
+          const oldSettings = result.ai_settings;
+          const newConfig: AIConfig = {
+            id: "default",
+            name: "默认配置",
+            isDefault: true,
+            apiEndpoint: oldSettings.apiEndpoint || "http://localhost:1234/v1",
+            apiKey: oldSettings.apiKey || "",
+            model: oldSettings.model || "qwen/qwen3-4b-2507",
+            systemPrompt: oldSettings.systemPrompt || `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台运行的JavaScript代码。
+规则：
+1. 只返回符合用户需求的JavaScript代码
+2. 代码必须用 \`\`\`javascript 和 \`\`\` 包裹
+3. 代码应该完整、可直接运行
+4. 如果需要操作页面元素，使用用户提供的选择器
+5. 不要包含任何解释性文字，除非用户明确要求`,
+            temperature: oldSettings.temperature ?? 0.7,
+            maxTokens: oldSettings.maxTokens ?? -1,
+            enableKnowledgeBase: oldSettings.enableKnowledgeBase ?? true,
+          };
+          const configs = [newConfig];
+          setAiConfigs(configs);
+          setSelectedConfigId(newConfig.id);
+          await chrome.storage.local.set({ ai_configs: configs });
+          await chrome.storage.local.remove("ai_settings");
+          console.log("[SidePanel] Migrated old AI config to new format:", newConfig);
         }
       } catch (error) {
         console.error("[SidePanel] Failed to load AI config:", error);
@@ -112,10 +160,16 @@ function SidePanelContent() {
 
   React.useEffect(() => {
     const handleStorageChanged = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
-      if (areaName === "local" && changes.ai_settings) {
-        const newConfig = changes.ai_settings.newValue;
-        setAiConfig(newConfig);
-        console.log("[SidePanel] AI config updated:", newConfig);
+      if (areaName === "local" && changes.ai_configs) {
+        const newConfigs = changes.ai_configs.newValue;
+        if (Array.isArray(newConfigs)) {
+          setAiConfigs(newConfigs);
+          const defaultConfig = newConfigs.find(c => c.isDefault);
+          if (defaultConfig && !selectedConfigId) {
+            setSelectedConfigId(defaultConfig.id);
+          }
+          console.log("[SidePanel] AI configs updated:", newConfigs);
+        }
       }
     };
 
@@ -123,7 +177,7 @@ function SidePanelContent() {
     return () => {
       chrome.storage.onChanged.removeListener(handleStorageChanged);
     };
-  }, []);
+  }, [selectedConfigId]);
 
   React.useEffect(() => {
     const handleTabActivated = async (activeInfo: { tabId: number; windowId: number }) => {
@@ -544,10 +598,20 @@ function SidePanelContent() {
     }
 
     try {
-      const config = aiConfig || {
+      const selectedConfig = aiConfigs.find(c => c.id === selectedConfigId);
+      const config = selectedConfig || (aiConfigs.length > 0 ? aiConfigs[0] : null) || {
         apiEndpoint: "http://localhost:1234/v1",
         apiKey: "",
         model: "qwen/qwen3-4b-2507",
+        systemPrompt: `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台运行的JavaScript代码。
+规则：
+1. 只返回符合用户需求的JavaScript代码
+2. 代码必须用 \`\`\`javascript 和 \`\`\` 包裹
+3. 代码应该完整、可直接运行
+4. 如果需要操作页面元素，使用用户提供的选择器
+5. 不要包含任何解释性文字，除非用户明确要求`,
+        temperature: 0.7,
+        maxTokens: -1,
         enableKnowledgeBase: true,
       };
 
@@ -1018,6 +1082,35 @@ ${element.outerHTML || ""}
             <h2>AI 对话</h2>
           </div>
           <div className="header-actions">
+            <div className="ai-config-selector">
+              <Select
+                value={selectedConfigId}
+                onChange={setSelectedConfigId}
+                placeholder="选择AI配置"
+                style={{ width: 180 }}
+                size="small"
+              >
+                {aiConfigs.map((config) => (
+                  <Select.Option key={config.id} value={config.id}>
+                    <Tooltip content={`模型: ${config.model}`}>
+                      <span>
+                        {config.name}
+                        {config.isDefault && " (默认)"}
+                      </span>
+                    </Tooltip>
+                  </Select.Option>
+                ))}
+              </Select>
+            </div>
+            <button
+              className="refresh-btn"
+              onClick={() => {
+                chrome.runtime.openOptionsPage?.();
+              }}
+              title="管理AI配置"
+            >
+              ⚙️
+            </button>
             <button className="refresh-btn" onClick={refreshCurrentPage} title="刷新页面">
               ↻
             </button>
