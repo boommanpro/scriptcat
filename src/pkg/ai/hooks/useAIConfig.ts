@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Message as ArcoMessage } from "@arco-design/web-react";
-import type { AIConfig } from "@App/pkg/ai";
+import type { AIConfig } from "./types";
 import {
   loadAISettings,
   saveAiConfigs,
@@ -10,7 +10,7 @@ import {
   setDefaultConfig,
   testConnection,
   createNewConfig,
-} from "@App/pkg/ai/storage";
+} from "../storage";
 
 export const useAIConfig = () => {
   const [aiConfigs, setAiConfigs] = useState<AIConfig[]>([]);

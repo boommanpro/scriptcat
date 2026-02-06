@@ -1,15 +1,15 @@
 import { Button, Card, Empty, Input, Space, Table, Tag, Tooltip } from "@arco-design/web-react";
 import { IconMessage, IconEdit, IconDelete, IconRefresh, IconSearch, IconSettings } from "@arco-design/web-react/icon";
 import React, { useState } from "react";
-import { useConversations } from "./hooks/useConversations";
-import { useAIConfig } from "./hooks/useAIConfig";
+import { useConversations } from "@App/pkg/ai/hooks/useConversations";
+import { useAIConfig } from "@App/pkg/ai/hooks/useAIConfig";
 import { DeleteConfirmModal } from "./components/DeleteConfirmModal";
 import { RenameModal } from "./components/RenameModal";
 import { ConversationDetailDrawer } from "./components/ConversationDetailDrawer";
 import { AIConfigModal } from "./components/AIConfigModal";
 import { AIConfigEditorModal } from "./components/AIConfigEditorModal";
 import { formatTime } from "./utils/format";
-import type { ConversationSession } from "./types";
+import type { ConversationSession } from "@App/pkg/ai";
 
 function AIConversation() {
   const [searchText, setSearchText] = useState("");

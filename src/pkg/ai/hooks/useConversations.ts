@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Message as ArcoMessage } from "@arco-design/web-react";
-import type { ConversationSession, DomainConversations } from "@App/pkg/ai";
-import { loadAllConversations, deleteSession, renameSession, deleteDomainConversations } from "@App/pkg/ai/storage";
+import type { ConversationSession, DomainConversations } from "../types";
+import { loadAllConversations, deleteSession, renameSession, deleteDomainConversations } from "../storage";
 
 export const useConversations = () => {
   const [domains, setDomains] = useState<DomainConversations[]>([]);

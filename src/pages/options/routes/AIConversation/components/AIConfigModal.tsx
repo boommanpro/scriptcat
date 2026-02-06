@@ -1,6 +1,6 @@
 import { Modal, Table, Space, Tag, Button, Tooltip, Popconfirm, Empty } from "@arco-design/web-react";
 import { IconEdit, IconDelete, IconCheck, IconPlus } from "@arco-design/web-react/icon";
-import type { AIConfig } from "../types";
+import type { AIConfig } from "@App/pkg/ai";
 
 interface AIConfigModalProps {
   visible: boolean;

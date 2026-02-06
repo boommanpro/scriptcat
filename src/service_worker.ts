@@ -840,7 +840,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
           elements: req.elements,
         },
       })
-      .catch(() => { });
+      .catch(() => {});
   }
 
   return false;

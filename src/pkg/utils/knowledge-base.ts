@@ -1,20 +1,20 @@
 interface KnowledgeBaseItem {
-    id: string;
-    title: string;
-    content: string;
-    category: string;
-    tags: string[];
-    relevance: number;
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  tags: string[];
+  relevance: number;
 }
 
 const SCRIPTCAT_KNOWLEDGE_BASE: KnowledgeBaseItem[] = [
-    {
-        id: "gm_api",
-        title: "GM API 介绍",
-        category: "API",
-        tags: ["GM_api", "API", "函数"],
-        relevance: 10,
-        content: `ScriptCat 提供了丰富的 GM API，包括：
+  {
+    id: "gm_api",
+    title: "GM API 介绍",
+    category: "API",
+    tags: ["GM_api", "API", "函数"],
+    relevance: 10,
+    content: `ScriptCat 提供了丰富的 GM API，包括：
 - GM_xmlhttpRequest: 发起网络请求
 - GM_addStyle: 添加CSS样式
 - GM_setValue/GM_getValue: 存储和读取数据
@@ -23,14 +23,14 @@ const SCRIPTCAT_KNOWLEDGE_BASE: KnowledgeBaseItem[] = [
 - GM_registerMenuCommand: 注册右键菜单
 - GM_info: 获取脚本信息
 - unsafeWindow: 访问页面的window对象`,
-    },
-    {
-        id: "metadata",
-        title: "脚本元数据",
-        category: "元数据",
-        tags: ["metadata", "元数据", "@name", "@match"],
-        relevance: 9,
-        content: `ScriptCat 脚本使用 UserScript 标准元数据：
+  },
+  {
+    id: "metadata",
+    title: "脚本元数据",
+    category: "元数据",
+    tags: ["metadata", "元数据", "@name", "@match"],
+    relevance: 9,
+    content: `ScriptCat 脚本使用 UserScript 标准元数据：
 - @name: 脚本名称
 - @namespace: 命名空间
 - @version: 版本号
@@ -44,14 +44,14 @@ const SCRIPTCAT_KNOWLEDGE_BASE: KnowledgeBaseItem[] = [
 - @resource: 资源文件
 - @connect: 连接权限
 - @run-at: 运行时机`,
-    },
-    {
-        id: "permissions",
-        title: "权限系统",
-        category: "权限",
-        tags: ["permission", "权限", "@grant"],
-        relevance: 8,
-        content: `ScriptCat 支持多种权限：
+  },
+  {
+    id: "permissions",
+    title: "权限系统",
+    category: "权限",
+    tags: ["permission", "权限", "@grant"],
+    relevance: 8,
+    content: `ScriptCat 支持多种权限：
 - GM_xmlhttpRequest: 网络请求权限
 - GM_addStyle: 添加样式权限
 - GM_setValue/GM_getValue: 存储权限
@@ -65,14 +65,14 @@ const SCRIPTCAT_KNOWLEDGE_BASE: KnowledgeBaseItem[] = [
 - GM_tabs: 标签页权限
 - GM_history: 历史记录权限
 - GM_bookmark: 书签权限`,
-    },
-    {
-        id: "storage",
-        title: "数据存储",
-        category: "存储",
-        tags: ["storage", "存储", "GM_setValue", "GM_getValue"],
-        relevance: 9,
-        content: `ScriptCat 提供两种存储方式：
+  },
+  {
+    id: "storage",
+    title: "数据存储",
+    category: "存储",
+    tags: ["storage", "存储", "GM_setValue", "GM_getValue"],
+    relevance: 9,
+    content: `ScriptCat 提供两种存储方式：
 1. GM_setValue/GM_getValue: 跨域存储，数据存储在扩展的存储中
 2. localStorage: 同域存储，数据存储在当前域名的localStorage中
 
@@ -81,14 +81,14 @@ GM_setValue('key', 'value');
 const value = GM_getValue('key');
 
 支持的数据类型：字符串、数字、布尔值、对象、数组`,
-    },
-    {
-        id: "xhr",
-        title: "网络请求",
-        category: "网络",
-        tags: ["xhr", "网络", "GM_xmlhttpRequest"],
-        relevance: 9,
-        content: `GM_xmlhttpRequest 用于发起网络请求：
+  },
+  {
+    id: "xhr",
+    title: "网络请求",
+    category: "网络",
+    tags: ["xhr", "网络", "GM_xmlhttpRequest"],
+    relevance: 9,
+    content: `GM_xmlhttpRequest 用于发起网络请求：
 GM_xmlhttpRequest({
   method: 'GET',
   url: 'https://example.com/api',
@@ -106,14 +106,14 @@ GM_xmlhttpRequest({
 
 支持的方法：GET, POST, PUT, DELETE, PATCH, HEAD
 支持的事件：onload, onerror, onreadystatechange, ontimeout, onprogress`,
-    },
-    {
-        id: "menu",
-        title: "右键菜单",
-        category: "菜单",
-        tags: ["menu", "菜单", "GM_registerMenuCommand"],
-        relevance: 7,
-        content: `GM_registerMenuCommand 用于注册右键菜单：
+  },
+  {
+    id: "menu",
+    title: "右键菜单",
+    category: "菜单",
+    tags: ["menu", "菜单", "GM_registerMenuCommand"],
+    relevance: 7,
+    content: `GM_registerMenuCommand 用于注册右键菜单：
 GM_registerMenuCommand({
   name: '菜单项名称',
   accessKey: 's',
@@ -132,14 +132,14 @@ GM_registerMenuCommand({
 info 对象包含：
 - menuItemId: 菜单项ID
 - selectionText: 选中的文本`,
-    },
-    {
-        id: "notification",
-        title: "通知功能",
-        category: "通知",
-        tags: ["notification", "通知", "GM_notification"],
-        relevance: 7,
-        content: `GM_notification 用于显示桌面通知：
+  },
+  {
+    id: "notification",
+    title: "通知功能",
+    category: "通知",
+    tags: ["notification", "通知", "GM_notification"],
+    relevance: 7,
+    content: `GM_notification 用于显示桌面通知：
 GM_notification({
   title: '通知标题',
   text: '通知内容',
@@ -158,14 +158,14 @@ GM_notification({
 - image: 图标URL（可选）
 - onclick: 点击回调（可选）
 - ondone: 关闭回调（可选）`,
-    },
-    {
-        id: "styling",
-        title: "样式注入",
-        category: "样式",
-        tags: ["style", "样式", "GM_addStyle"],
-        relevance: 8,
-        content: `GM_addStyle 用于向页面注入CSS样式：
+  },
+  {
+    id: "styling",
+    title: "样式注入",
+    category: "样式",
+    tags: ["style", "样式", "GM_addStyle"],
+    relevance: 8,
+    content: `GM_addStyle 用于向页面注入CSS样式：
 GM_addStyle(\`
   .my-class {
     color: red;
@@ -179,14 +179,14 @@ const styleId = GM_addStyle('.element { color: blue; }');
 // GM_removeStyle(styleId); // 如果支持的话
 
 样式会立即应用到页面，无需等待DOM加载完成`,
-    },
-    {
-        id: "unsafeWindow",
-        title: "unsafeWindow",
-        category: "高级",
-        tags: ["unsafeWindow", "window", "页面"],
-        relevance: 6,
-        content: `unsafeWindow 是页面的 window 对象的引用：
+  },
+  {
+    id: "unsafeWindow",
+    title: "unsafeWindow",
+    category: "高级",
+    tags: ["unsafeWindow", "window", "页面"],
+    relevance: 6,
+    content: `unsafeWindow 是页面的 window 对象的引用：
 const pageWindow = unsafeWindow;
 pageWindow.somePageFunction();
 
@@ -202,14 +202,14 @@ unsafeWindow.someFunction = function() {
   console.log('函数被拦截');
   return originalFunction.apply(this, arguments);
 };`,
-    },
-    {
-        id: "script_lifecycle",
-        title: "脚本生命周期",
-        category: "生命周期",
-        tags: ["lifecycle", "生命周期", "@run-at"],
-        relevance: 8,
-        content: `ScriptCat 脚本的生命周期：
+  },
+  {
+    id: "script_lifecycle",
+    title: "脚本生命周期",
+    category: "生命周期",
+    tags: ["lifecycle", "生命周期", "@run-at"],
+    relevance: 8,
+    content: `ScriptCat 脚本的生命周期：
 1. 安装：首次安装脚本时触发
 2. 更新：脚本版本更新时触发
 3. 启用：脚本被启用时触发
@@ -225,14 +225,14 @@ unsafeWindow.someFunction = function() {
 - context-menu: 在右键菜单打开时运行
 
 默认运行时机：document-end`,
-    },
-    {
-        id: "match_patterns",
-        title: "URL匹配模式",
-        category: "匹配",
-        tags: ["match", "URL", "@match"],
-        relevance: 8,
-        content: `URL匹配模式语法：
+  },
+  {
+    id: "match_patterns",
+    title: "URL匹配模式",
+    category: "匹配",
+    tags: ["match", "URL", "@match"],
+    relevance: 8,
+    content: `URL匹配模式语法：
 - *: 匹配任意字符
 - ?: 匹配单个字符
 - [a-z]: 匹配字符范围
@@ -249,14 +249,14 @@ unsafeWindow.someFunction = function() {
 - @match *://*/*: 匹配所有URL
 - @match file:///*: 匹配本地文件
 - @match http://127.0.0.1/*: 匹配本地服务器`,
-    },
-    {
-        id: "debugging",
-        title: "调试技巧",
-        category: "调试",
-        tags: ["debug", "调试", "console"],
-        relevance: 7,
-        content: `ScriptCat 脚本调试技巧：
+  },
+  {
+    id: "debugging",
+    title: "调试技巧",
+    category: "调试",
+    tags: ["debug", "调试", "console"],
+    relevance: 7,
+    content: `ScriptCat 脚本调试技巧：
 1. 使用 console.log 输出调试信息
 2. 使用 console.error 输出错误信息
 3. 使用 debugger 语句设置断点
@@ -274,14 +274,14 @@ unsafeWindow.someFunction = function() {
 - 脚本没有运行：检查 @match 是否正确
 - API 不可用：检查 @grant 是否添加
 - 权限被拒绝：检查扩展权限设置`,
-    },
-    {
-        id: "best_practices",
-        title: "最佳实践",
-        category: "最佳实践",
-        tags: ["best", "practice", "最佳实践"],
-        relevance: 6,
-        content: `ScriptCat 脚本开发最佳实践：
+  },
+  {
+    id: "best_practices",
+    title: "最佳实践",
+    category: "最佳实践",
+    tags: ["best", "practice", "最佳实践"],
+    relevance: 6,
+    content: `ScriptCat 脚本开发最佳实践：
 1. 使用严格模式：'use strict';
 2. 避免全局变量污染：使用 IIFE 或模块
 3. 错误处理：使用 try-catch 包裹关键代码
@@ -309,14 +309,14 @@ unsafeWindow.someFunction = function() {
     main();
   }
 })();`,
-    },
-    {
-        id: "dom_manipulation",
-        title: "DOM操作",
-        category: "DOM",
-        tags: ["dom", "DOM", "querySelector"],
-        relevance: 8,
-        content: `ScriptCat 脚本中的DOM操作：
+  },
+  {
+    id: "dom_manipulation",
+    title: "DOM操作",
+    category: "DOM",
+    tags: ["dom", "DOM", "querySelector"],
+    relevance: 8,
+    content: `ScriptCat 脚本中的DOM操作：
 
 选择元素：
 - document.querySelector(selector): 选择第一个匹配的元素
@@ -344,14 +344,14 @@ if (button) {
     console.log('按钮被点击');
   });
 }`,
-    },
-    {
-        id: "element_selection",
-        title: "元素选择器",
-        category: "DOM",
-        tags: ["selector", "选择器", "CSS"],
-        relevance: 8,
-        content: `常用的CSS选择器：
+  },
+  {
+    id: "element_selection",
+    title: "元素选择器",
+    category: "DOM",
+    tags: ["selector", "选择器", "CSS"],
+    relevance: 8,
+    content: `常用的CSS选择器：
 
 基本选择器：
 - #id: 通过ID选择元素
@@ -383,14 +383,14 @@ if (button) {
 - :first-child: 第一个子元素
 - :last-child: 最后一个子元素
 - :nth-child(n): 第n个子元素`,
-    },
-    {
-        id: "async_await",
-        title: "异步编程",
-        category: "异步",
-        tags: ["async", "await", "Promise"],
-        relevance: 7,
-        content: `使用 async/await 处理异步操作：
+  },
+  {
+    id: "async_await",
+    title: "异步编程",
+    category: "异步",
+    tags: ["async", "await", "Promise"],
+    relevance: 7,
+    content: `使用 async/await 处理异步操作：
 
 基本语法：
 async function fetchData() {
@@ -422,14 +422,14 @@ async function main() {
   const data = await request('https://api.example.com/data');
   console.log(data);
 }`,
-    },
-    {
-        id: "event_listeners",
-        title: "事件监听",
-        category: "事件",
-        tags: ["event", "事件", "addEventListener"],
-        relevance: 7,
-        content: `常用事件监听：
+  },
+  {
+    id: "event_listeners",
+    title: "事件监听",
+    category: "事件",
+    tags: ["event", "事件", "addEventListener"],
+    relevance: 7,
+    content: `常用事件监听：
 
 鼠标事件：
 - click: 点击
@@ -467,14 +467,14 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('按钮被点击');
   });
 });`,
-    },
-    {
-        id: "scriptcat_website",
-        title: "ScriptCat官网",
-        category: "资源",
-        tags: ["官网", "文档", "ScriptCat"],
-        relevance: 9,
-        content: `ScriptCat 官方资源：
+  },
+  {
+    id: "scriptcat_website",
+    title: "ScriptCat官网",
+    category: "资源",
+    tags: ["官网", "文档", "ScriptCat"],
+    relevance: 9,
+    content: `ScriptCat 官方资源：
 
 官方网站：https://scriptcat.org/
 - 提供最新的版本下载
@@ -499,14 +499,14 @@ GitHub仓库：https://github.com/scriptcat/scriptcat
 - Discord社区
 - QQ群
 - 微信群`,
-    },
-    {
-        id: "common_issues",
-        title: "常见问题",
-        category: "FAQ",
-        tags: ["faq", "问题", "常见"],
-        relevance: 7,
-        content: `ScriptCat 常见问题解答：
+  },
+  {
+    id: "common_issues",
+    title: "常见问题",
+    category: "FAQ",
+    tags: ["faq", "问题", "常见"],
+    relevance: 7,
+    content: `ScriptCat 常见问题解答：
 
 Q: 脚本没有运行？
 A: 检查 @match 或 @include 是否正确匹配当前URL
@@ -531,14 +531,14 @@ A: 使用 GM_xmlhttpRequest 并在 @connect 中声明域名
 
 Q: 脚本冲突怎么办？
 A: 检查是否有其他脚本修改了相同的元素`,
-    },
-    {
-        id: "value_listener",
-        title: "值变化监听",
-        category: "存储",
-        tags: ["GM_addValueChangeListener", "监听", "存储"],
-        relevance: 6,
-        content: `GM_addValueChangeListener 用于监听存储值的变化：
+  },
+  {
+    id: "value_listener",
+    title: "值变化监听",
+    category: "存储",
+    tags: ["GM_addValueChangeListener", "监听", "存储"],
+    relevance: 6,
+    content: `GM_addValueChangeListener 用于监听存储值的变化：
 
 GM_addValueChangeListener('key', (name, oldValue, newValue, remote) => {
   console.log('值发生变化');
@@ -562,14 +562,14 @@ const listenerId = GM_addValueChangeListener('key', callback);
 - 多标签页同步数据
 - 配置变化时更新UI
 - 实时响应设置更改`,
-    },
-    {
-        id: "download",
-        title: "文件下载",
-        category: "网络",
-        tags: ["GM_download", "下载", "文件"],
-        relevance: 6,
-        content: `GM_download 用于下载文件：
+  },
+  {
+    id: "download",
+    title: "文件下载",
+    category: "网络",
+    tags: ["GM_download", "下载", "文件"],
+    relevance: 6,
+    content: `GM_download 用于下载文件：
 
 GM_download({
   url: 'https://example.com/file.zip',
@@ -598,14 +598,14 @@ GM_download({
 - 需要在 @grant 中添加 GM_download 权限
 - 支持跨域下载
 - 可以下载大文件`,
-    },
-    {
-        id: "clipboard",
-        title: "剪贴板操作",
-        category: "系统",
-        tags: ["GM_setClipboard", "剪贴板", "复制"],
-        relevance: 6,
-        content: `GM_setClipboard 用于设置剪贴板内容：
+  },
+  {
+    id: "clipboard",
+    title: "剪贴板操作",
+    category: "系统",
+    tags: ["GM_setClipboard", "剪贴板", "复制"],
+    relevance: 6,
+    content: `GM_setClipboard 用于设置剪贴板内容：
 
 GM_setClipboard('要复制的文本');
 
@@ -629,53 +629,53 @@ GM_setClipboard('<b>粗体文本</b>', 'text/html');
 注意：
 - 需要在 @grant 中添加 GM_clipboard 权限
 - 某些浏览器可能需要用户交互才能访问剪贴板`,
-    },
+  },
 ];
 
 function searchKnowledgeBase(query: string, maxResults: number = 5): KnowledgeBaseItem[] {
-    const lowerQuery = query.toLowerCase();
-    const results = SCRIPTCAT_KNOWLEDGE_BASE.map((item) => {
-        let score = 0;
+  const lowerQuery = query.toLowerCase();
+  const results = SCRIPTCAT_KNOWLEDGE_BASE.map((item) => {
+    let score = 0;
 
-        if (item.title.toLowerCase().includes(lowerQuery)) {
-            score += 10;
-        }
-        if (item.content.toLowerCase().includes(lowerQuery)) {
-            score += 5;
-        }
-        if (item.tags.some((tag) => tag.toLowerCase().includes(lowerQuery))) {
-            score += 8;
-        }
-        if (item.category.toLowerCase().includes(lowerQuery)) {
-            score += 7;
-        }
+    if (item.title.toLowerCase().includes(lowerQuery)) {
+      score += 10;
+    }
+    if (item.content.toLowerCase().includes(lowerQuery)) {
+      score += 5;
+    }
+    if (item.tags.some((tag) => tag.toLowerCase().includes(lowerQuery))) {
+      score += 8;
+    }
+    if (item.category.toLowerCase().includes(lowerQuery)) {
+      score += 7;
+    }
 
-        score += item.relevance;
+    score += item.relevance;
 
-        return { ...item, score };
-    });
+    return { ...item, score };
+  });
 
-    return results
-        .sort((a, b) => b.score - a.score)
-        .slice(0, maxResults)
-        .map(({ ...item }) => item);
+  return results
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxResults)
+    .map(({ ...item }) => item);
 }
 
 function formatKnowledgeForPrompt(items: KnowledgeBaseItem[]): string {
-    if (items.length === 0) {
-        return "";
-    }
+  if (items.length === 0) {
+    return "";
+  }
 
-    return `
+  return `
 相关知识库信息：
 ${items
-            .map(
-                (item) => `
+  .map(
+    (item) => `
 ### ${item.title}
 ${item.content}
 `
-            )
-            .join("\n")}
+  )
+  .join("\n")}
 `;
 }
 
