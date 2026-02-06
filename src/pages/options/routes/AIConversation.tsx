@@ -6,14 +6,23 @@ import {
   Input,
   Message as ArcoMessage,
   Modal,
+  Popconfirm,
   Space,
+  Switch,
   Table,
   Tag,
   Tooltip,
-  Switch,
-  Popconfirm,
 } from "@arco-design/web-react";
-import { IconDelete, IconEdit, IconRefresh, IconSearch, IconMessage, IconSettings, IconPlus, IconCheck } from "@arco-design/web-react/icon";
+import {
+  IconCheck,
+  IconDelete,
+  IconEdit,
+  IconMessage,
+  IconPlus,
+  IconRefresh,
+  IconSearch,
+  IconSettings,
+} from "@arco-design/web-react/icon";
 import React, { useEffect, useState } from "react";
 
 interface ConversationSession {
@@ -121,7 +130,7 @@ function AIConversation() {
   const loadAISettings = async () => {
     try {
       const result = await chrome.storage.local.get(["ai_configs", "ai_settings"]);
-      
+
       if (result.ai_configs && Array.isArray(result.ai_configs)) {
         setAiConfigs(result.ai_configs);
       } else if (result.ai_settings) {
@@ -133,7 +142,9 @@ function AIConversation() {
           apiEndpoint: oldSettings.apiEndpoint || "http://localhost:1234/v1",
           apiKey: oldSettings.apiKey || "",
           model: oldSettings.model || "qwen/qwen3-4b-2507",
-          systemPrompt: oldSettings.systemPrompt || `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台运行的JavaScript代码。
+          systemPrompt:
+            oldSettings.systemPrompt ||
+            `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台运行的JavaScript代码。
 规则：
 1. 只返回符合用户需求的JavaScript代码
 2. 代码必须用 \`\`\`javascript 和 \`\`\` 包裹
@@ -189,14 +200,14 @@ function AIConversation() {
 
   const handleSaveConfig = async () => {
     if (!editingConfig) return;
-    
+
     let configs: AIConfig[];
-    if (aiConfigs.find(c => c.id === editingConfig.id)) {
-      configs = aiConfigs.map(c => c.id === editingConfig.id ? editingConfig : c);
+    if (aiConfigs.find((c) => c.id === editingConfig.id)) {
+      configs = aiConfigs.map((c) => (c.id === editingConfig.id ? editingConfig : c));
     } else {
       configs = [...aiConfigs, editingConfig];
     }
-    
+
     await saveAiConfigs(configs);
     setShowConfigEditor(false);
     setEditingConfig(null);
@@ -204,15 +215,15 @@ function AIConversation() {
   };
 
   const handleDeleteConfig = async (id: string) => {
-    const configs = aiConfigs.filter(c => c.id !== id);
+    const configs = aiConfigs.filter((c) => c.id !== id);
     await saveAiConfigs(configs);
     ArcoMessage.success("配置已删除");
   };
 
   const handleSetDefault = async (id: string) => {
-    const configs = aiConfigs.map(c => ({
+    const configs = aiConfigs.map((c) => ({
       ...c,
-      isDefault: c.id === id
+      isDefault: c.id === id,
     }));
     await saveAiConfigs(configs);
     ArcoMessage.success("已设为默认配置");
@@ -570,9 +581,7 @@ function AIConversation() {
       >
         <div className="ai-config-modal">
           <div className="flex justify-between items-center mb-4">
-            <div className="text-sm text-gray-500">
-              共 {aiConfigs.length} 个配置
-            </div>
+            <div className="text-sm text-gray-500">共 {aiConfigs.length} 个配置</div>
             <Button icon={<IconPlus />} onClick={handleAddConfig}>
               新增配置
             </Button>
@@ -627,35 +636,18 @@ function AIConversation() {
                     <Space>
                       {!record.isDefault && (
                         <Tooltip content="设为默认">
-                          <Button
-                            type="text"
-                            size="small"
-                            onClick={() => handleSetDefault(record.id)}
-                          >
+                          <Button type="text" size="small" onClick={() => handleSetDefault(record.id)}>
                             设为默认
                           </Button>
                         </Tooltip>
                       )}
                       <Tooltip content="编辑">
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<IconEdit />}
-                          onClick={() => handleEditConfig(record)}
-                        />
+                        <Button type="text" size="small" icon={<IconEdit />} onClick={() => handleEditConfig(record)} />
                       </Tooltip>
                       {!record.isDefault && (
                         <Tooltip content="删除">
-                          <Popconfirm
-                            title="确定要删除此配置吗？"
-                            onOk={() => handleDeleteConfig(record.id)}
-                          >
-                            <Button
-                              type="text"
-                              size="small"
-                              status="danger"
-                              icon={<IconDelete />}
-                            />
+                          <Popconfirm title="确定要删除此配置吗？" onOk={() => handleDeleteConfig(record.id)}>
+                            <Button type="text" size="small" status="danger" icon={<IconDelete />} />
                           </Popconfirm>
                         </Tooltip>
                       )}
@@ -794,10 +786,7 @@ function AIConversation() {
             </div>
 
             <Space direction="horizontal" className="w-full pt-4" size={12}>
-              <Button
-                type="primary"
-                onClick={handleSaveConfig}
-              >
+              <Button type="primary" onClick={handleSaveConfig}>
                 保存配置
               </Button>
               <Button
