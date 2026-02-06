@@ -1,4 +1,4 @@
-import type { Message, CodeBlock } from "../types";
+import type { CodeBlock } from "../types";
 
 export const extractCodeBlocks = (content: string): CodeBlock[] => {
   const codeBlockRegex = /```javascript\n([\s\S]*?)```/g;

@@ -19,7 +19,7 @@ export const ElementTags: React.FC<ElementTagsProps> = ({
     <div className="element-tags">
       <div className="element-tags-header">
         <button className="insert-all-btn" onClick={onInsertAll}>
-          插入全部
+          {"插入全部"}
         </button>
       </div>
       <div className="element-tags-list">
@@ -29,10 +29,10 @@ export const ElementTags: React.FC<ElementTagsProps> = ({
               {el.tagName}
             </span>
             <span className="element-tag-insert" onClick={() => onInsertElement(el, index)} title="插入到输入框">
-              📥
+              {"📥"}
             </span>
             <span className="element-tag-remove" onClick={() => onRemoveElement(index)}>
-              ×
+              {"×"}
             </span>
           </div>
         ))}

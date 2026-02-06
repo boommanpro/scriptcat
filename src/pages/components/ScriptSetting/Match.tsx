@@ -87,7 +87,7 @@ const Match: React.FC<{
 
   useEffect(() => {
     refreshMatch();
-  }, [script]);
+  }, [script, refreshMatch]);
 
   const columns: ColumnProps[] = [
     {

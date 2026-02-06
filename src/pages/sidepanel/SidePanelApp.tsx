@@ -12,8 +12,8 @@ import { extractCodeBlocks, replaceElementRefs } from "./utils/messageUtils";
 import type { Message } from "./types";
 
 export function SidePanelApp() {
-  // 使用共享的AI配置hook
-  const { aiConfigs, loading: configLoading, loadData: loadAIConfig } = useAIConfig();
+  // 使用{"共"}享的AI配置hook
+  const { aiConfigs, loading: _configLoading, loadData: loadAIConfig } = useAIConfig();
   const [selectedConfigId, setSelectedConfigId] = React.useState<string>("");
 
   // 使用拆分的hooks
@@ -44,7 +44,7 @@ export function SidePanelApp() {
   const {
     currentDomain,
     setCurrentDomain,
-    domains,
+    domains: _domains,
     sessions,
     currentSessionId,
     loadConversationData,
@@ -54,7 +54,12 @@ export function SidePanelApp() {
     refreshDomains,
   } = useConversation();
 
-  const { refreshCurrentPage, copyToClipboard, executeCode, injectExecutionService } = useBrowserExtension();
+  const {
+    refreshCurrentPage,
+    copyToClipboard: _copyToClipboard,
+    executeCode,
+    injectExecutionService,
+  } = useBrowserExtension();
 
   // 初始化和事件监听
   useEffect(() => {
@@ -164,7 +169,7 @@ export function SidePanelApp() {
     setSelectedMessages(new Set());
 
     if (messages.length === 0 && currentSessionId) {
-      const newTitle = userMessage.trim().substring(0, 20) + (userMessage.length > 20 ? "..." : "");
+      const _newTitle = userMessage.trim().substring(0, 20) + (userMessage.length > 20 ? "..." : "");
       // 这里需要调用重命名会话的函数
     }
 
@@ -175,11 +180,11 @@ export function SidePanelApp() {
           apiEndpoint: "http://localhost:1234/v1",
           apiKey: "",
           model: "qwen/qwen3-4b-2507",
-          systemPrompt: `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台运行的JavaScript代码。
+          systemPrompt: `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台{"运行"}的JavaScript代码。
 规则：
 1. 只返回符合用户需求的JavaScript代码
 2. 代码必须用 \`\`\`javascript 和 \`\`\` 包裹
-3. 代码应该完整、可直接运行
+3. 代码应该完整、可直接{"运行"}
 4. 如果需要操作页面元素，使用用户提供的选择器
 5. 不要包含任何解释性文字，除非用户明确要求`,
           temperature: 0.7,
@@ -189,11 +194,11 @@ export function SidePanelApp() {
 
       let systemPrompt =
         config.systemPrompt ||
-        `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台运行的JavaScript代码。
+        `你是一个专业的浏览器脚本编写助手。用户会描述他们想要的功能，你需要生成可以在浏览器控制台{"运行"}的JavaScript代码。
             规则：
             1. 只返回符合用户需求的JavaScript代码
             2. 代码必须用 \`\`\`javascript 和 \`\`\` 包裹
-            3. 代码应该完整、可直接运行
+            3. 代码应该完整、可直接{"运行"}
             4. 如果需要操作页面元素，使用用户提供的选择器
             5. 不要包含任何解释性文字，除非用户明确要求`;
 
@@ -282,7 +287,9 @@ export function SidePanelApp() {
                   )
                 );
               }
-            } catch (_e) {}
+            } catch (_e) {
+              // 忽略解析错误
+            }
           }
         }
       }
@@ -453,12 +460,12 @@ export function SidePanelApp() {
       <div className="ai-sidebar">
         <div className="ai-sidebar-header">
           <button className="new-chat-btn" onClick={() => createNewSession(currentDomain)}>
-            + 新建对话
+            {"+ 新建对话"}
           </button>
         </div>
         <div className="ai-sidebar-content">
           {sessions.length === 0 ? (
-            <div className="sidebar-empty">暂无对话</div>
+            <div className="sidebar-empty">{"暂无对话"}</div>
           ) : (
             sessions.map((session) => (
               <div
@@ -481,7 +488,7 @@ export function SidePanelApp() {
                     }}
                     title="重命名"
                   >
-                    ✏️
+                    {"✏️"}
                   </button>
                   <button
                     className="sidebar-action-btn delete"
@@ -493,7 +500,7 @@ export function SidePanelApp() {
                     }}
                     title="删除"
                   >
-                    🗑
+                    {"🗑"}
                   </button>
                 </div>
               </div>
@@ -509,7 +516,7 @@ export function SidePanelApp() {
       <div className="ai-main">
         <div className="ai-header">
           <div className="header-left">
-            <h2>AI 对话</h2>
+            <h2>{"AI 对话"}</h2>
           </div>
           <div className="header-actions">
             <div className="ai-config-selector">
@@ -539,10 +546,10 @@ export function SidePanelApp() {
               }}
               title="管理AI配置"
             >
-              ⚙️
+              {"⚙️"}
             </button>
             <button className="refresh-btn" onClick={refreshCurrentPage} title="刷新页面">
-              ↻
+              {"↻"}
             </button>
           </div>
         </div>
@@ -550,9 +557,9 @@ export function SidePanelApp() {
         <div className="ai-messages">
           {messages.length === 0 ? (
             <div className="ai-empty">
-              <div className="ai-empty-icon">🤖</div>
-              <p>我是 AI 助手，可以帮你编写浏览器脚本</p>
-              <p>告诉我你想实现什么功能吧！</p>
+              <div className="ai-empty-icon">{"🤖"}</div>
+              <p>{"我是 AI 助手，可以帮你编写浏览器脚本"}</p>
+              <p>{"告诉我你想实现什么功能吧！"}</p>
             </div>
           ) : (
             messages.map((msg) => (
@@ -612,7 +619,7 @@ export function SidePanelApp() {
             rows={3}
           />
           <button className="send-btn" onClick={handleSend} disabled={isLoading || !inputValue.trim()}>
-            发送
+            {"发送"}
           </button>
         </div>
       </div>

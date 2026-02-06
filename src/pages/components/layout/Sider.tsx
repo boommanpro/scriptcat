@@ -76,7 +76,7 @@ const Sider: React.FC = () => {
             </CustomLink>
             <CustomLink to="/ai-conversation" className="menu-ai-conversation">
               <MenuItem key="/ai-conversation">
-                <IconRobot /> AI设置
+                <IconRobot /> {"AI设置"}
               </MenuItem>
             </CustomLink>
             <CustomLink to="/setting" className="menu-setting">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { loadConversation, saveConversation, createSession, switchSession } from "@App/pkg/ai";
 
 export const useConversation = () => {

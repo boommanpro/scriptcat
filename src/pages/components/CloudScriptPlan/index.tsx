@@ -56,7 +56,7 @@ const CloudScriptPlan: React.FC<{
         }
       });
     }
-  }, [script]);
+  }, [script, form]);
   return (
     <Modal
       title={

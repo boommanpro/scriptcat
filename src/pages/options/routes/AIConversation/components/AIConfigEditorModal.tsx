@@ -1,4 +1,5 @@
 import { useState } from "react";
+import React, { useState } from "react";
 import { Modal, Space, Input, Switch, Button, Message as ArcoMessage } from "@arco-design/web-react";
 import type { AIConfig } from "@App/pkg/ai";
 

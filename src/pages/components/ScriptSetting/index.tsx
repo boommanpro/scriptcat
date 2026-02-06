@@ -53,7 +53,7 @@ const ScriptSetting: React.FC<{
         setScriptTags(parseTags(metadata) || []);
       });
     }
-  }, [script]);
+  }, [script, scriptDAO]);
 
   return (
     <Drawer

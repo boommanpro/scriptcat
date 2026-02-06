@@ -103,7 +103,7 @@ function hideTooltip(tooltip) {
 }
 
 function getElementSelector(element) {
-  if (element.id && element.id.match(/^[a-zA-Z_][a-zA-Z0-9_\-]*$/) && document.getElementById(element.id) === element) {
+  if (element.id && element.id.match(/^[a-zA-Z_][a-zA-Z0-9_-]*$/) && document.getElementById(element.id) === element) {
     return `#${element.id}`;
   }
 
@@ -113,7 +113,7 @@ function getElementSelector(element) {
     const classes = element.className
       .trim()
       .split(/\s+/)
-      .filter((c) => c && c.match(/^[a-zA-Z_][a-zA-Z0-9_\-]*$/));
+      .filter((c) => c && c.match(/^[a-zA-Z_][a-zA-Z0-9_-]*$/));
     if (classes.length > 0) {
       selector += "." + classes.slice(0, 3).join(".");
     }
@@ -185,11 +185,11 @@ function getElementInfo(element) {
   };
 }
 
-function handleElementClick(event) {
-  event.preventDefault();
-  event.stopPropagation();
+function handleElementClick(_event) {
+  _event.preventDefault();
+  _event.stopPropagation();
 
-  const element = event.target;
+  const element = _event.target;
   const elementInfo = getElementInfo(element);
 
   selectionState.selectedElements = [elementInfo];
@@ -205,15 +205,15 @@ function handleElementClick(event) {
 function handleMouseOver(event) {
   if (!selectionState.isSelecting) return;
 
-  const overlay = createHighlightOverlay();
+  const overlay1 = createHighlightOverlay();
   const tooltip = createTooltip();
   const element = event.target;
 
-  showHighlight(element, overlay);
+  showHighlight(element, overlay1);
   showTooltip(element, tooltip);
 }
 
-function handleMouseOut(event) {
+function handleMouseOut(_event) {
   const overlay = selectionState.highlightOverlay;
   const tooltip = selectionState.tooltipElement;
 
@@ -237,9 +237,9 @@ function startSelection() {
 
   document.body.style.cursor = "crosshair";
 
-  const overlay = createHighlightOverlay();
+  const overlay1 = createHighlightOverlay();
   const tooltip = createTooltip();
-  hideHighlight(overlay);
+  hideHighlight(overlay1);
   hideTooltip(tooltip);
 
   const info = document.createElement("div");
@@ -273,11 +273,11 @@ function startSelection() {
   `;
   document.body.appendChild(info);
 
-  const overlay = createHighlightOverlay();
-  hideHighlight(overlay);
+  const overlay2 = createHighlightOverlay();
+  hideHighlight(overlay2);
 }
 
-function startVisualSelection() {
+function _startVisualSelection() {
   if (selectionState.isSelecting) return;
 
   selectionState.isSelecting = true;

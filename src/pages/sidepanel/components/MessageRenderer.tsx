@@ -75,10 +75,10 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
                     </pre>
                     <div className="code-actions">
                       <button className="run-btn" onClick={() => codeBlock && onRunCode(codeBlock.code)}>
-                        运行
+                        {"运行"}
                       </button>
                       <button className="save-btn" onClick={() => codeBlock && onSaveCode(codeBlock.code)}>
-                        保存
+                        {"保存"}
                       </button>
                     </div>
                   </div>
@@ -93,19 +93,19 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
         <div className="debug-panel">
           <div className={`debug-section ${expandedMessages.has(message.id) ? "expanded" : ""}`}>
             <div className="debug-header">
-              <span className="debug-title">Request</span>
+              <span className="debug-title">{"Request"}</span>
               <button
                 className="copy-btn"
                 onClick={() => navigator.clipboard.writeText(JSON.stringify(message.request, null, 2))}
               >
-                复制
+                {"复制"}
               </button>
             </div>
             <pre className="debug-content">{JSON.stringify(message.request, null, 2)}</pre>
           </div>
           <div className={`debug-section ${expandedMessages.has(message.id) ? "expanded" : ""}`}>
             <div className="debug-header">
-              <span className="debug-title">Response</span>
+              <span className="debug-title">{"Response"}</span>
               <button
                 className="copy-btn"
                 onClick={() => {
@@ -116,7 +116,7 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
                   navigator.clipboard.writeText(responseText);
                 }}
               >
-                复制
+                {"复制"}
               </button>
             </div>
             <pre className="debug-content">

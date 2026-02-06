@@ -39,7 +39,7 @@ function App() {
       .catch((e: any) => {
         Message.error(e.message || t("get_confirm_error"));
       });
-  }, []);
+  }, [t, uuid]);
 
   const handleConfirm = (allow: boolean, type: number) => {
     return async () => {

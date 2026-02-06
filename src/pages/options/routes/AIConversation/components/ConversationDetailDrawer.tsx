@@ -20,9 +20,15 @@ export const ConversationDetailDrawer = ({ visible, session, onClose }: Conversa
         <div className="conversation-detail">
           <div className="detail-header">
             <Space>
-              <Tag color="arcoblue">消息数量: {session.messages?.length || 0}</Tag>
-              <Tag color="green">创建时间: {formatTime(session.createdAt)}</Tag>
-              <Tag color="orangered">更新时间: {formatTime(session.updatedAt)}</Tag>
+              <Tag color="arcoblue">
+                {"消息数量:"} {session.messages?.length || 0}
+              </Tag>
+              <Tag color="green">
+                {"创建时间:"} {formatTime(session.createdAt)}
+              </Tag>
+              <Tag color="orangered">
+                {"更新时间:"} {formatTime(session.updatedAt)}
+              </Tag>
             </Space>
           </div>
           <div className="detail-messages">

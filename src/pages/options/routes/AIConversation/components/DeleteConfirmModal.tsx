@@ -18,8 +18,12 @@ export const DeleteConfirmModal = ({ visible, sessionTitle, onOk, onCancel }: De
       cancelText="取消"
       okButtonProps={{ status: "danger" }}
     >
-      <p>确定要删除会话 &quot;{sessionTitle}&quot; 吗？</p>
-      <p className="text-gray-500 text-sm">此操作不可恢复。</p>
+      <p>
+        {"确定要删除会话 &quot;"}
+        {sessionTitle}
+        {"&quot; 吗？"}
+      </p>
+      <p className="text-gray-500 text-sm">{"此操作不可恢复。"}</p>
     </Modal>
   );
 };
