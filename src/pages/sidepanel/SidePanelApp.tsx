@@ -123,8 +123,6 @@ export function SidePanelApp() {
           const conversationData = await loadConversationData(newDomain);
           setMessages(conversationData.messages);
           await refreshDomains();
-          // 重置UI状态
-          setSelectedMessages(new Set());
         }
       } catch (error: any) {
         console.error("[SidePanel] Failed to handle tab change:", error);
@@ -168,7 +166,6 @@ export function SidePanelApp() {
     setInputValue("");
     setSelectedElements([]);
     setIsLoading(true);
-    setSelectedMessages(new Set());
 
     if (messages.length === 0 && currentSessionId) {
       const _newTitle = userMessage.trim().substring(0, 20) + (userMessage.length > 20 ? "..." : "");

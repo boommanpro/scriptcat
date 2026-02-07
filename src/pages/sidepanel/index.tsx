@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import { ConfigProvider } from "@arco-design/web-react";
 import "@arco-design/web-react/dist/css/arco.css";
 import "./sidepanel.css";
-import { SidePanelApp } from "./SidePanelApp";
+import { SidePanelApp } from "@App/pages/sidepanel/SidePanelApp.tsx";
 
 const getLocale = (): any => {
   return {};
