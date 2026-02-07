@@ -318,19 +318,12 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
                 <div
                   key={request.id}
                   className={`monitor-list-item ${request.selected ? "selected" : ""}`}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    console.log('[MonitorPanel] Network request double clicked:', request.id);
-                    onDoubleClickNetworkRequest?.(request);
-                  }}
-                  style={{ cursor: onDoubleClickNetworkRequest ? "pointer" : "default", userSelect: 'text' }}
                 >
-                  <div className="monitor-item-row" onDoubleClick={(e) => e.stopPropagation()}>
+                  <div className="monitor-item-row">
                     <Checkbox
                       checked={request.selected}
                       onChange={() => onToggleNetworkRequest(request.id)}
                       className="monitor-item-checkbox"
-                      onDoubleClick={(e) => e.stopPropagation()}
                     />
                     <span
                       className="monitor-item-expand"
@@ -343,6 +336,17 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
                       {request.url}
                     </span>
                     <span className="monitor-item-type">fetch</span>
+                    {onDoubleClickNetworkRequest && (
+                      <Button
+                        size="mini"
+                        type="text"
+                        className="monitor-item-insert-btn"
+                        onClick={() => onDoubleClickNetworkRequest(request)}
+                        title="插入到聊天"
+                      >
+                        ⬇
+                      </Button>
+                    )}
                   </div>
                   <div className="monitor-item-row secondary">
                     <span className="monitor-item-time">{formatTime(request.timestamp)}</span>
@@ -387,19 +391,12 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
                 <div
                   key={log.id}
                   className={`monitor-list-item ${log.selected ? "selected" : ""}`}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    console.log('[MonitorPanel] Console log double clicked:', log.id);
-                    onDoubleClickConsoleLog?.(log);
-                  }}
-                  style={{ cursor: onDoubleClickConsoleLog ? "pointer" : "default", userSelect: 'text' }}
                 >
-                  <div className="monitor-item-row" onDoubleClick={(e) => e.stopPropagation()}>
+                  <div className="monitor-item-row">
                     <Checkbox
                       checked={log.selected}
                       onChange={() => onToggleConsoleLog(log.id)}
                       className="monitor-item-checkbox"
-                      onDoubleClick={(e) => e.stopPropagation()}
                     />
                     <span
                       className="monitor-item-expand"
@@ -423,6 +420,17 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
                     >
                       {log.message}
                     </span>
+                    {onDoubleClickConsoleLog && (
+                      <Button
+                        size="mini"
+                        type="text"
+                        className="monitor-item-insert-btn"
+                        onClick={() => onDoubleClickConsoleLog(log)}
+                        title="插入到聊天"
+                      >
+                        ⬇
+                      </Button>
+                    )}
                   </div>
                   <div className="monitor-item-row secondary">
                     <span className="monitor-item-time">{formatTime(log.timestamp)}</span>
