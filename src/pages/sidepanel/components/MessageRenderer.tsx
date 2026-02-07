@@ -45,49 +45,51 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
 
   return (
     <div key={message.id} className={`ai-message ${message.role}`}>
-      <div
-        className={`message-checkbox ${selectedMessages.has(message.id) ? "checked" : ""}`}
-        onClick={() => toggleMessageSelection(message.id)}
-      >
-        <input type="checkbox" checked={selectedMessages.has(message.id)} readOnly />
-      </div>
-      {message.role === "assistant" && message.codeBlocks && message.codeBlocks.length > 0 && (
+      <div className="ai-message-main">
         <div
-          className={`debug-toggle ${expandedMessages.has(message.id) ? "expanded" : ""}`}
-          onClick={() => toggleExpandedMessages(message.id)}
+          className={`message-checkbox ${selectedMessages.has(message.id) ? "checked" : ""}`}
+          onClick={() => toggleMessageSelection(message.id)}
         >
-          {expandedMessages.has(message.id) ? "▼" : "▶"}
+          <input type="checkbox" checked={selectedMessages.has(message.id)} readOnly />
         </div>
-      )}
-      <div className="ai-message-content">
-        {message.role === "user" ? (
-          renderMessageContent(message.content)
-        ) : (
-          <div className="message-text">
-            {message.content.split(/(```javascript[\s\S]*?```)/g).map((part, index) => {
-              if (part.startsWith("```javascript") && part.endsWith("```")) {
-                const code = part.slice(14, -3);
-                const codeBlock = message.codeBlocks?.[Math.floor(index / 2)];
-                return (
-                  <div key={index} className="code-block">
-                    <pre>
-                      <code>{code}</code>
-                    </pre>
-                    <div className="code-actions">
-                      <button className="run-btn" onClick={() => codeBlock && onRunCode(codeBlock.code)}>
-                        {"运行"}
-                      </button>
-                      <button className="save-btn" onClick={() => codeBlock && onSaveCode(codeBlock.code)}>
-                        {"保存"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              }
-              return part && <span key={index}>{part}</span>;
-            })}
+        {message.role === "assistant" && message.codeBlocks && message.codeBlocks.length > 0 && (
+          <div
+            className={`debug-toggle ${expandedMessages.has(message.id) ? "expanded" : ""}`}
+            onClick={() => toggleExpandedMessages(message.id)}
+          >
+            {expandedMessages.has(message.id) ? "▼" : "▶"}
           </div>
         )}
+        <div className="ai-message-content">
+          {message.role === "user" ? (
+            renderMessageContent(message.content)
+          ) : (
+            <div className="message-text">
+              {message.content.split(/(```javascript[\s\S]*?```)/g).map((part, index) => {
+                if (part.startsWith("```javascript") && part.endsWith("```")) {
+                  const code = part.slice(14, -3);
+                  const codeBlock = message.codeBlocks?.[Math.floor(index / 2)];
+                  return (
+                    <div key={index} className="code-block">
+                      <pre>
+                        <code>{code}</code>
+                      </pre>
+                      <div className="code-actions">
+                        <button className="run-btn" onClick={() => codeBlock && onRunCode(codeBlock.code)}>
+                          {"运行"}
+                        </button>
+                        <button className="save-btn" onClick={() => codeBlock && onSaveCode(codeBlock.code)}>
+                          {"保存"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+                return part && <span key={index}>{part}</span>;
+              })}
+            </div>
+          )}
+        </div>
       </div>
       {message.role === "assistant" && expandedMessages.has(message.id) && (
         <div className="debug-panel">
@@ -110,8 +112,8 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
                 className="copy-btn"
                 onClick={() => {
                   const responseText =
-                    typeof message.response === "object" && "text" in message.response
-                      ? (message.response as any).text
+                    typeof message.response === "object" && "content" in message.response
+                      ? (message.response as any).content
                       : JSON.stringify(message.response, null, 2);
                   navigator.clipboard.writeText(responseText);
                 }}
@@ -120,8 +122,8 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
               </button>
             </div>
             <pre className="debug-content">
-              {typeof message.response === "object" && "text" in message.response
-                ? (message.response as any).text
+              {typeof message.response === "object" && "content" in message.response
+                ? (message.response as any).content
                 : JSON.stringify(message.response, null, 2)}
             </pre>
           </div>

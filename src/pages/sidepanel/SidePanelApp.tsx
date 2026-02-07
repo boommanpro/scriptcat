@@ -333,7 +333,8 @@ export function SidePanelApp() {
         role: "assistant",
         content: assistantMessage,
         codeBlocks: finalCodeBlocks,
-        response: { text: fullResponseText },
+        request: requestBody,
+        response: { content: assistantMessage },
         timestamp: Date.now(),
       };
 

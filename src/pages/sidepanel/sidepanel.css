@@ -597,9 +597,14 @@
 
 .ai-message {
   display: flex;
+  flex-direction: column;
+  max-width: 90%;
+}
+
+.ai-message-main {
+  display: flex;
   flex-direction: row;
   align-items: flex-start;
-  max-width: 90%;
 }
 
 .ai-message.user {
