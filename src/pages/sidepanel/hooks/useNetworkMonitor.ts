@@ -221,6 +221,10 @@ export const useNetworkMonitor = () => {
     return networkRequests.filter((r) => r.selected);
   }, [networkRequests]);
 
+  const getRequestById = useCallback((id: string) => {
+    return requestMapRef.current.get(id);
+  }, []);
+
   const formatRequestForPrompt = useCallback((request: NetworkRequest) => {
     const lines = [
       `### 网络请求: ${request.method} ${request.url}`,
@@ -267,6 +271,7 @@ export const useNetworkMonitor = () => {
     toggleRequestSelection,
     selectAllRequests,
     getSelectedRequests,
+    getRequestById,
     formatRequestForPrompt,
     insertSelectedRequests,
   };

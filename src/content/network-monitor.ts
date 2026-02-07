@@ -1,34 +1,37 @@
-// 网络监控 Content Script - 在 document_start 时注入
-// 这个脚本运行在 isolated world，负责在 MAIN world 中注入监控代码
+// 网络监控 Content Script - 在 isolated world 中运行
+// 作为桥梁，从 MAIN world 获取数据并发送到 Service Worker
 
-// 立即执行注入
 (function () {
   'use strict';
 
-  // 注入脚本到 MAIN world
-  function injectScript() {
-    const script = document.createElement('script');
-    script.src = chrome.runtime.getURL('network-monitor-inject.js');
-    script.onload = function () {
-      // 脚本加载完成后移除
-      script.remove();
-    };
+  console.log('[Network Monitor Bridge] Content script loaded in isolated world');
 
-    // 在 documentElement 存在时立即注入
-    if (document.documentElement) {
-      document.documentElement.appendChild(script);
-    } else {
-      // 如果 documentElement 还不存在，等待它出现
-      const observer = new MutationObserver(() => {
-        if (document.documentElement) {
-          observer.disconnect();
-          document.documentElement.appendChild(script);
-        }
-      });
-      observer.observe(document, { childList: true });
+  // 定期从 MAIN world 获取数据并发送到 Service Worker
+  setInterval(async () => {
+    try {
+      // 通过 executeScript 从 MAIN world 读取数据
+      // 注意：这里不能直接访问，需要通过其他方式
+      // 实际上，我们需要让 MAIN world 的脚本通过 window.postMessage 发送数据
+    } catch (error) {
+      // 忽略错误
     }
-  }
+  }, 500);
 
-  // 立即注入
-  injectScript();
+  // 监听来自 MAIN world 的消息（通过 window.postMessage）
+  window.addEventListener('message', (event) => {
+    if (event.source !== window) return;
+
+    if (event.data && event.data.source === 'network-monitor-main') {
+      // 转发到 Service Worker
+      try {
+        chrome.runtime.sendMessage({
+          type: event.data.type,
+          data: event.data.data,
+        }).catch(() => { });
+      } catch (error) {
+        // 扩展上下文已失效，忽略错误
+        console.log('[Network Monitor Bridge] Extension context invalidated, stopping message forwarding');
+      }
+    }
+  });
 })();

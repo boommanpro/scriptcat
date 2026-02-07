@@ -309,6 +309,10 @@ export const useConsoleMonitor = () => {
     return consoleLogs.filter((log) => log.selected);
   }, [consoleLogs]);
 
+  const getLogById = useCallback((id: string) => {
+    return consoleLogs.find((log) => log.id === id);
+  }, [consoleLogs]);
+
   const formatLogForPrompt = useCallback((log: ConsoleLog) => {
     const lines = [
       `### Console ${log.level.toUpperCase()}`,
@@ -354,6 +358,7 @@ export const useConsoleMonitor = () => {
     toggleLogSelection,
     selectAllLogs,
     getSelectedLogs,
+    getLogById,
     formatLogForPrompt,
     insertSelectedLogs,
     getLogLevelColor,

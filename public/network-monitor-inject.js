@@ -23,6 +23,15 @@
 
   const generateId = () => 'req-' + (++requestIdCounter) + '-' + Date.now();
 
+  // 发送数据到 isolated world 的 content script
+  const sendToIsolated = (type, data) => {
+    window.postMessage({
+      source: 'network-monitor-main',
+      type: type,
+      data: data,
+    }, '*');
+  };
+
   // 保存请求到数组（仅在启用时）
   const saveRequest = (type, data) => {
     if (!window.__networkMonitorEnabled) return;
@@ -30,6 +39,8 @@
       window.__networkMonitorData = [];
     }
     window.__networkMonitorData.push({ type, data });
+    // 同时发送到 isolated world
+    sendToIsolated(type, data);
   };
 
   // ==================== 拦截 fetch ====================
@@ -40,7 +51,7 @@
     const requestId = generateId();
     const startTime = Date.now();
 
-    // 无论是否启用，都记录请求信息（用于后续保存）
+    // 记录请求信息
     const requestInfo = {
       id: requestId,
       url,

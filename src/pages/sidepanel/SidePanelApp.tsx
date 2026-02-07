@@ -83,6 +83,8 @@ export function SidePanelApp() {
     toggleRequestSelection: toggleNetworkRequestSelection,
     selectAllRequests: selectAllNetworkRequests,
     insertSelectedRequests: insertSelectedNetworkRequests,
+    formatRequestForPrompt,
+    getRequestById,
   } = useNetworkMonitor();
 
   const {
@@ -95,6 +97,8 @@ export function SidePanelApp() {
     toggleLogSelection: toggleConsoleLogSelection,
     selectAllLogs: selectAllConsoleLogs,
     insertSelectedLogs: insertSelectedConsoleLogs,
+    formatLogForPrompt,
+    getLogById,
     getLogLevelColor,
   } = useConsoleMonitor();
 
@@ -838,6 +842,26 @@ export function SidePanelApp() {
             if (combinedText) {
               setInputValue((prev) => `${combinedText}${prev ? `\n\n${prev}` : ""}`);
             }
+          }}
+          onDoubleClickNetworkRequest={(request) => {
+            console.log('[SidePanel] Network request double clicked:', request.id, request.url);
+            const formatted = formatRequestForPrompt(request);
+            console.log('[SidePanel] Formatted network request:', formatted.substring(0, 100) + '...');
+            setInputValue((prev) => {
+              const newValue = `${formatted}${prev ? `\n\n${prev}` : ""}`;
+              console.log('[SidePanel] Setting input value, length:', newValue.length);
+              return newValue;
+            });
+          }}
+          onDoubleClickConsoleLog={(log) => {
+            console.log('[SidePanel] Console log double clicked:', log.id, log.message.substring(0, 50));
+            const formatted = formatLogForPrompt(log);
+            console.log('[SidePanel] Formatted console log:', formatted.substring(0, 100) + '...');
+            setInputValue((prev) => {
+              const newValue = `${formatted}${prev ? `\n\n${prev}` : ""}`;
+              console.log('[SidePanel] Setting input value, length:', newValue.length);
+              return newValue;
+            });
           }}
           getLogLevelColor={getLogLevelColor}
           isRecording={isNetworkRecording || isConsoleRecording}

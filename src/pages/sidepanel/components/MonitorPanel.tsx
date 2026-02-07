@@ -14,6 +14,8 @@ interface MonitorPanelProps {
   onClearNetwork: () => void;
   onClearConsole: () => void;
   onInsertSelected: () => void;
+  onDoubleClickNetworkRequest?: (request: NetworkRequest) => void;
+  onDoubleClickConsoleLog?: (log: ConsoleLog) => void;
   getLogLevelColor: (level: ConsoleLog["level"]) => string;
   isRecording: boolean;
   onToggleRecording: () => void;
@@ -33,6 +35,8 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
   onClearNetwork,
   onClearConsole,
   onInsertSelected,
+  onDoubleClickNetworkRequest,
+  onDoubleClickConsoleLog,
   getLogLevelColor,
   isRecording,
   onToggleRecording,
@@ -311,12 +315,22 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
               </div>
             ) : (
               filteredNetworkRequests.map((request) => (
-                <div key={request.id} className={`monitor-list-item ${request.selected ? "selected" : ""}`}>
-                  <div className="monitor-item-row">
+                <div
+                  key={request.id}
+                  className={`monitor-list-item ${request.selected ? "selected" : ""}`}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    console.log('[MonitorPanel] Network request double clicked:', request.id);
+                    onDoubleClickNetworkRequest?.(request);
+                  }}
+                  style={{ cursor: onDoubleClickNetworkRequest ? "pointer" : "default", userSelect: 'text' }}
+                >
+                  <div className="monitor-item-row" onDoubleClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={request.selected}
                       onChange={() => onToggleNetworkRequest(request.id)}
                       className="monitor-item-checkbox"
+                      onDoubleClick={(e) => e.stopPropagation()}
                     />
                     <span
                       className="monitor-item-expand"
@@ -370,12 +384,22 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
               </div>
             ) : (
               filteredConsoleLogs.map((log) => (
-                <div key={log.id} className={`monitor-list-item ${log.selected ? "selected" : ""}`}>
-                  <div className="monitor-item-row">
+                <div
+                  key={log.id}
+                  className={`monitor-list-item ${log.selected ? "selected" : ""}`}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    console.log('[MonitorPanel] Console log double clicked:', log.id);
+                    onDoubleClickConsoleLog?.(log);
+                  }}
+                  style={{ cursor: onDoubleClickConsoleLog ? "pointer" : "default", userSelect: 'text' }}
+                >
+                  <div className="monitor-item-row" onDoubleClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={log.selected}
                       onChange={() => onToggleConsoleLog(log.id)}
                       className="monitor-item-checkbox"
+                      onDoubleClick={(e) => e.stopPropagation()}
                     />
                     <span
                       className="monitor-item-expand"
