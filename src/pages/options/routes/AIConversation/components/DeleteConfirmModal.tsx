@@ -19,9 +19,9 @@ export const DeleteConfirmModal = ({ visible, sessionTitle, onOk, onCancel }: De
       okButtonProps={{ status: "danger" }}
     >
       <p>
-        {"确定要删除会话 &quot;"}
+        {"确定要删除会话 "}
         {sessionTitle}
-        {"&quot; 吗？"}
+        {" 吗？"}
       </p>
       <p className="text-gray-500 text-sm">{"此操作不可恢复。"}</p>
     </Modal>
