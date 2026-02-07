@@ -47,6 +47,7 @@ function AIConversation() {
     handleTestConnection: _handleTestConnection,
     handleAddConfig,
     handleEditConfig,
+    handleCopyConfig,
   } = useAIConfig();
 
   const filteredDomains = domains.filter((d) => d.domain.toLowerCase().includes(searchText.toLowerCase()));
@@ -263,6 +264,7 @@ function AIConversation() {
         onEditConfig={handleEditConfig}
         onDeleteConfig={handleDeleteConfig}
         onSetDefault={handleSetDefault}
+        onCopyConfig={handleCopyConfig}
         onClose={() => setShowSettingModal(false)}
       />
 

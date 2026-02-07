@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-no-literals */
 import { Modal, Table, Space, Tag, Button, Tooltip, Popconfirm, Empty } from "@arco-design/web-react";
-import { IconEdit, IconDelete, IconCheck, IconPlus } from "@arco-design/web-react/icon";
+import { IconEdit, IconDelete, IconCheck, IconPlus, IconCopy } from "@arco-design/web-react/icon";
 import type { AIConfig } from "@App/pkg/ai";
 
 interface AIConfigModalProps {
@@ -10,6 +10,7 @@ interface AIConfigModalProps {
   onEditConfig: (config: AIConfig) => void;
   onDeleteConfig: (id: string) => void;
   onSetDefault: (id: string) => void;
+  onCopyConfig: (config: AIConfig) => void;
   onClose: () => void;
 }
 
@@ -20,6 +21,7 @@ export const AIConfigModal = ({
   onEditConfig,
   onDeleteConfig,
   onSetDefault,
+  onCopyConfig,
   onClose,
 }: AIConfigModalProps) => {
   const columns = [
@@ -68,6 +70,9 @@ export const AIConfigModal = ({
               </Button>
             </Tooltip>
           )}
+          <Tooltip content="复制">
+            <Button type="text" size="small" icon={<IconCopy />} onClick={() => onCopyConfig(record)} />
+          </Tooltip>
           <Tooltip content="编辑">
             <Button type="text" size="small" icon={<IconEdit />} onClick={() => onEditConfig(record)} />
           </Tooltip>

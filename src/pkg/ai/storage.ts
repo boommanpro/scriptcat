@@ -88,6 +88,15 @@ export const setDefaultConfig = (configs: AIConfig[], id: string): AIConfig[] =>
   }));
 };
 
+export const copyConfig = (config: AIConfig): AIConfig => {
+  return {
+    ...config,
+    id: Date.now().toString(),
+    name: `${config.name} - 副本`,
+    isDefault: false,
+  };
+};
+
 export const testConnection = async (config: AIConfig): Promise<boolean> => {
   try {
     const response = await fetch(`${config.apiEndpoint}/models`, {

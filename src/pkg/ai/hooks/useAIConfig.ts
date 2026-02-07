@@ -10,6 +10,7 @@ import {
   setDefaultConfig,
   testConnection,
   createNewConfig,
+  copyConfig,
 } from "../storage";
 
 export const useAIConfig = () => {
@@ -101,6 +102,12 @@ export const useAIConfig = () => {
     setShowConfigEditor(true);
   };
 
+  const handleCopyConfig = (config: AIConfig) => {
+    const copiedConfig = copyConfig(config);
+    setEditingConfig(copiedConfig);
+    setShowConfigEditor(true);
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -118,6 +125,7 @@ export const useAIConfig = () => {
     handleTestConnection,
     handleAddConfig,
     handleEditConfig,
+    handleCopyConfig,
     loadData,
   };
 };
