@@ -35,6 +35,7 @@ export default defineConfig({
     sandbox: `${src}/sandbox.ts`,
     content: `${src}/content.ts`,
     inject: `${src}/inject.ts`,
+    "content/network-monitor": `${src}/content/network-monitor.ts`,
     popup: `${src}/pages/popup/main.tsx`,
     install: `${src}/pages/install/main.tsx`,
     batchupdate: `${src}/pages/batchupdate/main.tsx`,
@@ -145,6 +146,14 @@ export default defineConfig({
           from: `${src}/content-script-inject.js`,
           to: `${dist}/ext/src`,
         },
+        {
+          from: `${dirname}/node_modules/chobitsu/dist/chobitsu.js`,
+          to: `${dist}/ext/chobitsu.js`,
+        },
+        {
+          from: `${dirname}/public/network-monitor-inject.js`,
+          to: `${dist}/ext/network-monitor-inject.js`,
+        },
       ],
     }),
     new rspack.HtmlRspackPlugin({
@@ -228,7 +237,7 @@ export default defineConfig({
     splitChunks: {
       chunks: (chunk) => {
         // 排除这些文件，不进行分离
-        return !["editor.worker", "ts.worker", "linter.worker", "service_worker", "content", "inject"].includes(
+        return !["editor.worker", "ts.worker", "linter.worker", "service_worker", "content", "inject", "content/network-monitor"].includes(
           chunk.name || ""
         );
       },

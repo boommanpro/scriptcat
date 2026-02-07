@@ -751,54 +751,17 @@ const apiActions: {
     const { tabId, code } = message;
     if (!tabId) return { success: false, error: "No tabId" };
 
-    const executionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    console.log("[ServiceWorker] ai-execute-code called", {
-      tabId,
-      executionId,
-      codePreview: code.substring(0, 50) + "...",
-    });
-
-    try {
-      console.log("[ServiceWorker] Sending message to tab:", tabId);
-      const response = await chrome.tabs.sendMessage(tabId, {
-        type: "ai-code-executor",
-        code,
-        executionId,
-      });
-
-      console.log("[ServiceWorker] Received response from tab:", response);
-      if (response && response.executionId === executionId) {
-        console.log("[ServiceWorker] Execution successful via direct message");
-        return {
-          success: response.success,
-          result: response.result,
-          error: response.error,
-        };
-      } else {
-        console.warn("[ServiceWorker] Response executionId mismatch or invalid response", {
-          expected: executionId,
-          received: response?.executionId,
-        });
-      }
-    } catch (error: any) {
-      console.log("[ServiceWorker] Direct execution failed, falling back to injected script:", error.message);
-    }
-
-    console.log("[ServiceWorker] Using fallback executeScript method with MAIN world");
     try {
       const result = await chrome.scripting.executeScript({
         target: { tabId },
         world: "MAIN",
-        func: (scriptCode) => {
-          console.log("[Page-Fallback] Executing code in MAIN world:", scriptCode.substring(0, 50) + "...");
+        func: (codeToExecute: string) => {
           try {
-            const func = new Function(scriptCode);
-            const result = func();
-            console.log("[Page-Fallback] Execution success:", result);
-            return { success: true, result: String(result) };
+            const fn = new Function(codeToExecute);
+            const result = fn();
+            return { success: true, result: String(result), type: typeof result };
           } catch (error: any) {
-            console.error("[Page-Fallback] Execution failed:", error);
-            return { success: false, error: String(error) };
+            return { success: false, error: String(error), errorType: error.constructor.name };
           }
         },
         args: [code],
@@ -807,6 +770,27 @@ const apiActions: {
     } catch (error: any) {
       return { success: false, error: error.message };
     }
+  },
+
+  async "ai-start-network-monitor"(message: any, _sender: RuntimeMessageSender) {
+    // 网络监控逻辑已移至 SidePanel 的 hook 中
+    // 这里只返回成功，实际注入由 hook 处理
+    return { success: true };
+  },
+
+  async "ai-stop-network-monitor"(message: any, _sender: RuntimeMessageSender) {
+    // 停止逻辑由 hook 处理
+    return { success: true };
+  },
+
+  async "ai-start-console-monitor"(message: any, _sender: RuntimeMessageSender) {
+    // 控制台监控逻辑已移至 SidePanel 的 hook 中
+    return { success: true };
+  },
+
+  async "ai-stop-console-monitor"(message: any, _sender: RuntimeMessageSender) {
+    // 停止逻辑由 hook 处理
+    return { success: true };
   },
 };
 
@@ -841,6 +825,45 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
         },
       })
       .catch(() => {});
+  }
+
+  if (req.type === "NETWORK_REQUEST" && sender.tab?.id) {
+    console.log("[SW] Received NETWORK_REQUEST from tab", sender.tab.id, ":", req.data);
+    console.log("[SW] Sender info:", { tabId: sender.tab?.id, url: sender.tab?.url, frameId: sender.frameId });
+    
+    // 尝试发送到 SidePanel
+    const messageToSend = {
+      type: "NETWORK_REQUEST",
+      data: req.data,
+      sourceTabId: sender.tab.id,
+    };
+    console.log("[SW] Broadcasting message:", messageToSend);
+    
+    chrome.runtime
+      .sendMessage(messageToSend)
+      .then(() => console.log("[SW] Message broadcasted successfully"))
+      .catch((err) => console.error("[SW] Failed to broadcast message:", err));
+  }
+
+  if (req.type === "NETWORK_RESPONSE" && sender.tab?.id) {
+    console.log("[SW] Received NETWORK_RESPONSE from tab", sender.tab?.id, ":", req.data);
+    chrome.runtime
+      .sendMessage({
+        type: "NETWORK_RESPONSE",
+        data: req.data,
+        sourceTabId: sender.tab.id,
+      })
+      .catch((err) => console.error("[SW] Failed to broadcast NETWORK_RESPONSE:", err));
+  }
+
+  if (req.type === "CONSOLE_LOG" && sender.tab?.id) {
+    console.log("[SW] Forwarding CONSOLE_LOG:", req.data);
+    chrome.runtime
+      .sendMessage({
+        type: "CONSOLE_LOG",
+        data: req.data,
+      })
+      .catch((err) => console.error("[SW] Failed to forward CONSOLE_LOG:", err));
   }
 
   return false;

@@ -54,9 +54,28 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/network-monitor.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
   "sandbox": {
     "pages": [
       "src/sandbox.html"
     ]
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "chobitsu.js",
+        "network-monitor-inject.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }

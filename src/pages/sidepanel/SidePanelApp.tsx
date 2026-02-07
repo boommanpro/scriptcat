@@ -6,8 +6,12 @@ import { useChatMessages } from "./hooks/useChatMessages";
 import { useElementSelection } from "./hooks/useElementSelection";
 import { useConversation } from "./hooks/useConversation";
 import { useBrowserExtension } from "./hooks/useBrowserExtension";
+import { useNetworkMonitor } from "./hooks/useNetworkMonitor";
+import { useConsoleMonitor } from "./hooks/useConsoleMonitor";
 import { MessageRenderer } from "./components/MessageRenderer";
 import { ElementTags } from "./components/ElementTags";
+import { MonitorPanel } from "./components/MonitorPanel";
+import { MonitorTags } from "./components/MonitorTags";
 import { extractCodeBlocks, replaceElementRefs } from "./utils/messageUtils";
 import type { Message } from "./types";
 
@@ -19,6 +23,7 @@ export function SidePanelApp() {
   const [renameValue, setRenameValue] = useState("");
   const [sessionToRename, setSessionToRename] = useState<any>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMonitorPanelOpen, setIsMonitorPanelOpen] = useState(false);
 
   // 使用拆分的hooks
   const {
@@ -66,6 +71,32 @@ export function SidePanelApp() {
     executeCode,
     injectExecutionService,
   } = useBrowserExtension();
+
+  const {
+    networkRequests,
+    isRecording: isNetworkRecording,
+    startRecording: startNetworkRecording,
+    stopRecording: stopNetworkRecording,
+    clearRequests: clearNetworkRequests,
+    addRequest: addNetworkRequest,
+    updateRequest: updateNetworkRequest,
+    toggleRequestSelection: toggleNetworkRequestSelection,
+    selectAllRequests: selectAllNetworkRequests,
+    insertSelectedRequests: insertSelectedNetworkRequests,
+  } = useNetworkMonitor();
+
+  const {
+    consoleLogs,
+    isRecording: isConsoleRecording,
+    startRecording: startConsoleRecording,
+    stopRecording: stopConsoleRecording,
+    clearLogs: clearConsoleLogs,
+    addLog: addConsoleLog,
+    toggleLogSelection: toggleConsoleLogSelection,
+    selectAllLogs: selectAllConsoleLogs,
+    insertSelectedLogs: insertSelectedConsoleLogs,
+    getLogLevelColor,
+  } = useConsoleMonitor();
 
   // 初始化和事件监听
   useEffect(() => {
@@ -202,9 +233,7 @@ export function SidePanelApp() {
     };
 
     // 仅使用选中的消息作为上下文，如果没有选中则使用空数组（只有当前消息）
-    const contextMessages = selectedMessages.size > 0
-      ? messages.filter((m) => selectedMessages.has(m.id))
-      : [];
+    const contextMessages = selectedMessages.size > 0 ? messages.filter((m) => selectedMessages.has(m.id)) : [];
 
     const allMessagesForAPI = [...contextMessages, userMsg];
 
@@ -296,7 +325,6 @@ export function SidePanelApp() {
 
       const decoder = new TextDecoder();
       let assistantMessage = "";
-      let fullResponseText = "";
       const messageId = Date.now().toString();
 
       setMessages((prev) => [
@@ -331,7 +359,6 @@ export function SidePanelApp() {
               const content = parsed.choices?.[0]?.delta?.content;
               if (content) {
                 assistantMessage += content;
-                fullResponseText += content;
                 const codeBlocks = extractCodeBlocks(assistantMessage);
                 setMessages((prev) =>
                   prev.map((m) =>
@@ -442,9 +469,37 @@ export function SidePanelApp() {
     setIsSelecting(false);
   };
 
+  // 使用 ref 来保持函数引用稳定，避免 useEffect 重复注册
+  const addNetworkRequestRef = React.useRef(addNetworkRequest);
+  const updateNetworkRequestRef = React.useRef(updateNetworkRequest);
+  const addConsoleLogRef = React.useRef(addConsoleLog);
+
+  // 更新 ref 值
+  addNetworkRequestRef.current = addNetworkRequest;
+  updateNetworkRequestRef.current = updateNetworkRequest;
+  addConsoleLogRef.current = addConsoleLog;
+
   useEffect(() => {
-    const handleMessage = (message: any) => {
-      if (message.message === "ai-element-selected") {
+    console.log("[SidePanel] Setting up message listener...");
+    
+    const handleMessage = (message: any, sender: any, sendResponse: any) => {
+      console.log("[SidePanel] Received message:", message.type || message.message, message);
+      console.log("[SidePanel] Sender:", sender);
+      
+      if (message.type === "NETWORK_REQUEST") {
+        console.log("[SidePanel] Processing NETWORK_REQUEST, data:", message.data);
+        addNetworkRequestRef.current(message.data);
+        console.log("[SidePanel] NETWORK_REQUEST processed, current count:", networkRequests.length);
+        return true;
+      } else if (message.type === "NETWORK_RESPONSE") {
+        console.log("[SidePanel] Processing NETWORK_RESPONSE, data:", message.data);
+        updateNetworkRequestRef.current(message.data.id, message.data);
+        return true;
+      } else if (message.type === "CONSOLE_LOG") {
+        console.log("[SidePanel] Processing CONSOLE_LOG, data:", message.data);
+        addConsoleLogRef.current(message.data);
+        return true;
+      } else if (message.message === "ai-element-selected") {
         const newElements = message.data.elements;
         setSelectedElements((prev) => {
           const existingSelectors = new Set(prev.map((el) => el.selector));
@@ -470,7 +525,7 @@ export function SidePanelApp() {
     return () => {
       chrome.runtime.onMessage.removeListener(handleMessage);
     };
-  }, [setInputValue, setIsSelecting, setSelectedElements]);
+  }, []); // 空依赖数组，只在挂载时注册一次
 
   const handleConfigChange = async (value: string) => {
     setSelectedConfigId(value);
@@ -548,11 +603,7 @@ export function SidePanelApp() {
             <button className="new-chat-btn" onClick={() => createNewSession(currentDomain)}>
               {"+ 新建对话"}
             </button>
-            <button
-              className="toggle-sidebar-btn"
-              onClick={() => setIsSidebarCollapsed(true)}
-              title="收起侧边栏"
-            >
+            <button className="toggle-sidebar-btn" onClick={() => setIsSidebarCollapsed(true)} title="收起侧边栏">
               {"←"}
             </button>
           </div>
@@ -616,11 +667,7 @@ export function SidePanelApp() {
         <div className="ai-header">
           <div className="header-left">
             {isSidebarCollapsed && (
-              <button
-                className="toggle-sidebar-btn"
-                onClick={() => setIsSidebarCollapsed(false)}
-                title="展开侧边栏"
-              >
+              <button className="toggle-sidebar-btn" onClick={() => setIsSidebarCollapsed(false)} title="展开侧边栏">
                 {"→"}
               </button>
             )}
@@ -655,6 +702,24 @@ export function SidePanelApp() {
               title="管理AI配置"
             >
               {"⚙️"}
+            </button>
+            <button
+              className={`record-btn ${isNetworkRecording || isConsoleRecording ? "recording" : ""}`}
+              onClick={async () => {
+                if (isNetworkRecording || isConsoleRecording) {
+                  await stopNetworkRecording();
+                  await stopConsoleRecording();
+                } else {
+                  await startNetworkRecording();
+                  await startConsoleRecording();
+                }
+              }}
+              title={isNetworkRecording || isConsoleRecording ? "停止录制" : "开始录制网络和控制台"}
+            >
+              {isNetworkRecording || isConsoleRecording ? "⏹" : "⏺"}
+            </button>
+            <button className="monitor-detail-btn" onClick={() => setIsMonitorPanelOpen(true)} title="查看监听详情">
+              {"📋"}
             </button>
             <button className="refresh-btn" onClick={refreshCurrentPage} title="刷新页面">
               {"↻"}
@@ -698,6 +763,22 @@ export function SidePanelApp() {
           <div ref={messagesEndRef} />
         </div>
 
+        <MonitorTags
+          selectedNetworkRequests={networkRequests.filter((r: { selected?: boolean }) => r.selected)}
+          selectedConsoleLogs={consoleLogs.filter((l: { selected?: boolean }) => l.selected)}
+          onRemoveNetworkRequest={(id) => toggleNetworkRequestSelection(id)}
+          onRemoveConsoleLog={(id) => toggleConsoleLogSelection(id)}
+          onInsertAll={() => {
+            const networkText = insertSelectedNetworkRequests();
+            const consoleText = insertSelectedConsoleLogs();
+            const combinedText = [networkText, consoleText].filter(Boolean).join("\n\n");
+            if (combinedText) {
+              setInputValue((prev) => `${combinedText}${prev ? `\n\n${prev}` : ""}`);
+            }
+          }}
+          getLogLevelColor={getLogLevelColor}
+        />
+
         <ElementTags
           selectedElements={selectedElements}
           onInsertAll={() => {
@@ -737,6 +818,40 @@ export function SidePanelApp() {
           </button>
         </div>
       </div>
+
+      {isMonitorPanelOpen && (
+        <MonitorPanel
+          isOpen={isMonitorPanelOpen}
+          onClose={() => setIsMonitorPanelOpen(false)}
+          networkRequests={networkRequests}
+          consoleLogs={consoleLogs}
+          onToggleNetworkRequest={toggleNetworkRequestSelection}
+          onToggleConsoleLog={toggleConsoleLogSelection}
+          onSelectAllNetwork={selectAllNetworkRequests}
+          onSelectAllConsole={selectAllConsoleLogs}
+          onClearNetwork={clearNetworkRequests}
+          onClearConsole={clearConsoleLogs}
+          onInsertSelected={() => {
+            const networkText = insertSelectedNetworkRequests();
+            const consoleText = insertSelectedConsoleLogs();
+            const combinedText = [networkText, consoleText].filter(Boolean).join("\n\n");
+            if (combinedText) {
+              setInputValue((prev) => `${combinedText}${prev ? `\n\n${prev}` : ""}`);
+            }
+          }}
+          getLogLevelColor={getLogLevelColor}
+          isRecording={isNetworkRecording || isConsoleRecording}
+          onToggleRecording={async () => {
+            if (isNetworkRecording || isConsoleRecording) {
+              await stopNetworkRecording();
+              await stopConsoleRecording();
+            } else {
+              await startNetworkRecording();
+              await startConsoleRecording();
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

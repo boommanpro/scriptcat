@@ -64,3 +64,41 @@ export interface ConversationDataWithDomain {
   sessions: ConversationSession[];
   currentSessionId?: string;
 }
+
+// 网络请求数据
+export interface NetworkRequest {
+  id: string;
+  url: string;
+  method: string;
+  status?: number;
+  statusText?: string;
+  requestHeaders?: Record<string, string>;
+  requestBody?: string;
+  responseHeaders?: Record<string, string>;
+  responseBody?: string;
+  timestamp: number;
+  selected?: boolean;
+  type?: string;
+  time?: number;
+}
+
+// 控制台日志数据
+export interface ConsoleLog {
+  id: string;
+  level: "log" | "warn" | "error" | "info" | "debug" | "trace";
+  message: string;
+  args?: any[];
+  stack?: string;
+  timestamp: number;
+  selected?: boolean;
+  source?: string;
+  line?: number;
+  column?: number;
+}
+
+// 监听状态
+export interface MonitorState {
+  isRecording: boolean;
+  networkEnabled: boolean;
+  consoleEnabled: boolean;
+}
