@@ -17,7 +17,7 @@ export function SidePanelApp() {
   const [selectedConfigId, setSelectedConfigId] = useState<string>("");
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [renameValue, setRenameValue] = useState("");
-  const [renameSession, setRenameSession] = useState<any>(null);
+  const [sessionToRename, setSessionToRename] = useState<any>(null);
 
   // 使用拆分的hooks
   const {
@@ -56,7 +56,7 @@ export function SidePanelApp() {
     saveCurrentConversation,
     refreshDomains,
     deleteSession,
-    renameSession,
+    renameSession: renameSessionFn,
   } = useConversation();
 
   const {
@@ -465,8 +465,8 @@ export function SidePanelApp() {
         title="重命名会话"
         visible={renameModalVisible}
         onOk={() => {
-          if (renameValue.trim() && renameSession) {
-            renameSession(currentDomain, renameSession.id, renameValue);
+          if (renameValue.trim() && sessionToRename) {
+            renameSessionFn(currentDomain, sessionToRename.id, renameValue);
           }
           setRenameModalVisible(false);
         }}
@@ -502,7 +502,7 @@ export function SidePanelApp() {
                     className="sidebar-action-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setRenameSession(session);
+                      setSessionToRename(session);
                       setRenameValue(session.title);
                       setRenameModalVisible(true);
                     }}

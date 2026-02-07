@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Message as ArcoMessage } from "@arco-design/web-react";
+import { Message as ArcoMessage, Modal } from "@arco-design/web-react";
 import type { ConversationSession, DomainConversations } from "../types";
 import { loadAllConversations, deleteSession, renameSession, deleteDomainConversations } from "../storage";
 
@@ -55,18 +55,32 @@ export const useConversations = () => {
   };
 
   const handleDeleteDomain = async (domain: string) => {
-    try {
-      await deleteDomainConversations(domain);
-      ArcoMessage.success("域名对话已删除");
-      await loadData();
+    const domainData = domains.find((d) => d.domain === domain);
+    const sessionCount = domainData?.data.sessions.length || 0;
 
-      if (selectedDomain === domain) {
-        setSelectedDomain("");
-      }
-    } catch (error) {
-      console.error("Failed to delete domain:", error);
-      ArcoMessage.error("删除失败");
-    }
+    Modal.confirm({
+      title: "确认删除",
+      content: `确定要删除域名 "${domain}" 及其所有对话吗？这将删除 ${sessionCount} 个会话，且无法恢复。`,
+      okText: "确认删除",
+      cancelText: "取消",
+      okButtonProps: {
+        status: "danger",
+      },
+      onOk: async () => {
+        try {
+          await deleteDomainConversations(domain);
+          ArcoMessage.success("域名对话已删除");
+          await loadData();
+
+          if (selectedDomain === domain) {
+            setSelectedDomain("");
+          }
+        } catch (error) {
+          console.error("Failed to delete domain:", error);
+          ArcoMessage.error("删除失败");
+        }
+      },
+    });
   };
 
   useEffect(() => {
