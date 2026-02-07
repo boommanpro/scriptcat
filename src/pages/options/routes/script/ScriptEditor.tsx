@@ -173,12 +173,17 @@ const emptyScript = async (template: string, hotKeys: any, target?: string) => {
 type visibleItem = "scriptStorage" | "scriptSetting" | "scriptResource";
 
 const popstate = () => {
-  if (confirm(i18n.t("script_modified_leave_confirm"))) {
-    window.history.back();
-    window.removeEventListener("popstate", popstate);
-  } else {
-    window.history.pushState(null, "", window.location.href);
-  }
+  modal.confirm({
+    title: i18n.t("confirm_leave_page"),
+    content: i18n.t("script_modified_leave_confirm"),
+    onOk: () => {
+      window.history.back();
+      window.removeEventListener("popstate", popstate);
+    },
+    onCancel: () => {
+      window.history.pushState(null, "", window.location.href);
+    },
+  });
   return false;
 };
 
@@ -646,18 +651,34 @@ function ScriptEditor() {
 
   // 通用的编辑器删除处理函数
   const handleDeleteEditor = (targetUuid: string, needConfirm: boolean = false) => {
+    const targetEditor = editors.find((e) => e.script.uuid === targetUuid);
+    if (!targetEditor) return;
+
+    // 如果需要确认且脚本已修改
+    if (needConfirm && targetEditor.isChanged) {
+      modal.confirm({
+        title: t("confirm_close_editor"),
+        content: t("script_modified_close_confirm"),
+        okText: t("confirm"),
+        cancelText: t("cancel"),
+        onOk: () => {
+          // 继续删除操作
+          executeDeleteEditor(targetUuid);
+        },
+      });
+      return;
+    }
+
+    executeDeleteEditor(targetUuid);
+  };
+
+  // 实际执行删除编辑器的函数
+  const executeDeleteEditor = (targetUuid: string) => {
     setEditors((prev) => {
       const targetIndex = prev.findIndex((e) => e.script.uuid === targetUuid);
       if (targetIndex === -1) return prev;
 
       const targetEditor = prev[targetIndex];
-
-      // 如果需要确认且脚本已修改
-      if (needConfirm && targetEditor.isChanged) {
-        if (!confirm(t("script_modified_close_confirm"))) {
-          return prev;
-        }
-      }
 
       // 如果只剩一个编辑器，打开空白脚本
       if (prev.length === 1) {

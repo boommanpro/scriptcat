@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Modal } from "@arco-design/web-react";
 
 const CustomLink: React.FC<{
   children: ReactNode;
@@ -14,12 +15,17 @@ const CustomLink: React.FC<{
 
   const click = () => {
     if (window.onbeforeunload) {
-      if (confirm(t("confirm_leave_page"))) {
-        nav({
-          pathname: to,
-          search,
-        });
-      }
+      Modal.confirm({
+        title: t("confirm_leave_page"),
+        okText: t("confirm"),
+        cancelText: t("cancel"),
+        onOk: () => {
+          nav({
+            pathname: to,
+            search,
+          });
+        },
+      });
     } else {
       nav({
         pathname: to,

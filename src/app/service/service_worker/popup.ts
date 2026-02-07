@@ -712,7 +712,19 @@ export class PopupService {
         console.log("[AIContextMenu] AI对话菜单被点击，选中文本:", selectedText);
 
         try {
-          await chrome.sidePanel.open({ windowId: tab!.windowId });
+          // 获取当前窗口ID，如果tab.windowId无效(-1)，则获取当前窗口
+          let windowId = tab?.windowId;
+          if (!windowId || windowId === -1) {
+            const currentWindow = await chrome.windows.getCurrent();
+            windowId = currentWindow.id;
+          }
+
+          if (!windowId || windowId === chrome.windows.WINDOW_ID_NONE) {
+            console.error("[AIContextMenu] 无法获取有效的窗口ID");
+            return;
+          }
+
+          await chrome.sidePanel.open({ windowId });
 
           setTimeout(async () => {
             try {

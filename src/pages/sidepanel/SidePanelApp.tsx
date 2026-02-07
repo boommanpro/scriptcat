@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { Select, Tooltip } from "@arco-design/web-react";
+import React, { useEffect, useState } from "react";
+import { Select, Tooltip, Modal, Input } from "@arco-design/web-react";
 import { searchKnowledgeBase, formatKnowledgeForPrompt } from "@App/pkg/utils/knowledge-base";
 import { useAIConfig } from "@App/pkg/ai";
 import { useChatMessages } from "./hooks/useChatMessages";
@@ -14,7 +14,10 @@ import type { Message } from "./types";
 export function SidePanelApp() {
   // 使用{"共"}享的AI配置hook
   const { aiConfigs, loading: _configLoading, loadData: loadAIConfig } = useAIConfig();
-  const [selectedConfigId, setSelectedConfigId] = React.useState<string>("");
+  const [selectedConfigId, setSelectedConfigId] = useState<string>("");
+  const [renameModalVisible, setRenameModalVisible] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameSession, setRenameSession] = useState<any>(null);
 
   // 使用拆分的hooks
   const {
@@ -52,6 +55,8 @@ export function SidePanelApp() {
     switchToSession,
     saveCurrentConversation,
     refreshDomains,
+    deleteSession,
+    renameSession,
   } = useConversation();
 
   const {
@@ -455,6 +460,23 @@ export function SidePanelApp() {
   // 渲染逻辑
   return (
     <div className="ai-sidepanel">
+      {/* 重命名会话Modal */}
+      <Modal
+        title="重命名会话"
+        visible={renameModalVisible}
+        onOk={() => {
+          if (renameValue.trim() && renameSession) {
+            renameSession(currentDomain, renameSession.id, renameValue);
+          }
+          setRenameModalVisible(false);
+        }}
+        onCancel={() => setRenameModalVisible(false)}
+        okText="确定"
+        cancelText="取消"
+      >
+        <Input placeholder="请输入新的会话名称" value={renameValue} onChange={setRenameValue} maxLength={100} />
+      </Modal>
+
       {/* 侧边栏会话列表 */}
       <div className="ai-sidebar">
         <div className="ai-sidebar-header">
@@ -480,10 +502,9 @@ export function SidePanelApp() {
                     className="sidebar-action-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      const newTitle = prompt("请输入新的会话名称:", session.title);
-                      if (newTitle && newTitle.trim()) {
-                        // 调用重命名函数
-                      }
+                      setRenameSession(session);
+                      setRenameValue(session.title);
+                      setRenameModalVisible(true);
                     }}
                     title="重命名"
                   >
@@ -493,9 +514,15 @@ export function SidePanelApp() {
                     className="sidebar-action-btn delete"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm(`确定要删除会话 "${session.title}" 吗？`)) {
-                        // 调用删除函数
-                      }
+                      Modal.confirm({
+                        title: "确认删除",
+                        content: `确定要删除会话 "${session.title}" 吗？`,
+                        okText: "删除",
+                        cancelText: "取消",
+                        onOk: () => {
+                          deleteSession(currentDomain, session.id);
+                        },
+                      });
                     }}
                     title="删除"
                   >
