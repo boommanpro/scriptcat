@@ -262,3 +262,21 @@ export const switchSession = async (domain: string, sessionId: string): Promise<
     throw error;
   }
 };
+
+export const loadSelectedConfigId = async (): Promise<string | null> => {
+  try {
+    const result = await chrome.storage.local.get("ai_selected_config_id");
+    return result.ai_selected_config_id || null;
+  } catch (error) {
+    console.error("Failed to load selected config ID:", error);
+    return null;
+  }
+};
+
+export const saveSelectedConfigId = async (configId: string): Promise<void> => {
+  try {
+    await chrome.storage.local.set({ ai_selected_config_id: configId });
+  } catch (error) {
+    console.error("Failed to save selected config ID:", error);
+  }
+};

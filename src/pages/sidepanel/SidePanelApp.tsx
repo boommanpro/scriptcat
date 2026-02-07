@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Select, Tooltip, Modal, Input } from "@arco-design/web-react";
 import { searchKnowledgeBase, formatKnowledgeForPrompt } from "@App/pkg/utils/knowledge-base";
-import { useAIConfig } from "@App/pkg/ai";
+import { useAIConfig, loadSelectedConfigId, saveSelectedConfigId } from "@App/pkg/ai";
 import { useChatMessages } from "./hooks/useChatMessages";
 import { useElementSelection } from "./hooks/useElementSelection";
 import { useConversation } from "./hooks/useConversation";
@@ -95,6 +95,35 @@ export function SidePanelApp() {
     loadAIConfig();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const initializeSelectedConfig = async () => {
+      if (aiConfigs.length === 0) return;
+
+      const savedConfigId = await loadSelectedConfigId();
+      if (savedConfigId) {
+        const configExists = aiConfigs.find((c) => c.id === savedConfigId);
+        if (configExists) {
+          setSelectedConfigId(savedConfigId);
+          console.log("[SidePanel] Loaded saved config ID:", savedConfigId);
+        } else {
+          const defaultConfig = aiConfigs.find((c) => c.isDefault);
+          if (defaultConfig) {
+            setSelectedConfigId(defaultConfig.id);
+            console.log("[SidePanel] Saved config not found, using default:", defaultConfig.id);
+          }
+        }
+      } else {
+        const defaultConfig = aiConfigs.find((c) => c.isDefault);
+        if (defaultConfig) {
+          setSelectedConfigId(defaultConfig.id);
+          console.log("[SidePanel] No saved config, using default:", defaultConfig.id);
+        }
+      }
+    };
+
+    initializeSelectedConfig();
+  }, [aiConfigs]);
 
   useEffect(() => {
     const handleStorageChanged = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
@@ -414,6 +443,12 @@ export function SidePanelApp() {
     };
   }, [setInputValue, setIsSelecting, setSelectedElements]);
 
+  const handleConfigChange = async (value: string) => {
+    setSelectedConfigId(value);
+    await saveSelectedConfigId(value);
+    console.log("[SidePanel] Config changed to:", value);
+  };
+
   const handleRunCode = async (code: string) => {
     console.log("[SidePanel-HandleRunCode] User clicked run button", {
       codePreview: code.substring(0, 50) + "...",
@@ -548,7 +583,7 @@ export function SidePanelApp() {
             <div className="ai-config-selector">
               <Select
                 value={selectedConfigId}
-                onChange={setSelectedConfigId}
+                onChange={handleConfigChange}
                 placeholder="选择AI配置"
                 style={{ width: 180 }}
                 size="small"
