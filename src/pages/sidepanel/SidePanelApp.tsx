@@ -170,10 +170,16 @@ export function SidePanelApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadConversationData, refreshDomains]);
 
+  // AbortController for canceling requests
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
   // 核心业务逻辑函数
   const callLLMApi = async (userMessage: string): Promise<void> => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) return;
+
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
 
     const processedMessage = replaceElementRefs(userMessage, selectedElements);
 
@@ -194,9 +200,17 @@ export function SidePanelApp() {
       timestamp: Date.now(),
     };
 
-    const allMessagesForAPI = [...messages, userMsg];
+    // 仅使用选中的消息作为上下文，如果没有选中则使用空数组（只有当前消息）
+    const contextMessages = selectedMessages.size > 0
+      ? messages.filter((m) => selectedMessages.has(m.id))
+      : [];
 
-    setMessages(allMessagesForAPI);
+    const allMessagesForAPI = [...contextMessages, userMsg];
+
+    // 保留所有历史消息显示，仅对API使用选中的上下文
+    const displayMessages = [...messages, userMsg];
+
+    setMessages(displayMessages);
     setInputValue("");
     setSelectedElements([]);
     setIsLoading(true);
@@ -267,6 +281,7 @@ export function SidePanelApp() {
           Authorization: `Bearer ${config.apiKey}`,
         },
         body: JSON.stringify(requestBody),
+        signal: abortControllerRef.current?.signal,
       });
 
       if (!apiResponse.ok) {
@@ -296,6 +311,9 @@ export function SidePanelApp() {
       ]);
 
       while (true) {
+        if (abortControllerRef.current?.signal.aborted) {
+          break;
+        }
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -338,7 +356,8 @@ export function SidePanelApp() {
         timestamp: Date.now(),
       };
 
-      const finalMessages = [...allMessagesForAPI, finalAssistantMsg];
+      // 保留所有历史消息，追加AI回复
+      const finalMessages = [...displayMessages, finalAssistantMsg];
       setMessages(finalMessages);
       await saveCurrentConversation(currentDomain, finalMessages);
     } catch (error) {
@@ -350,7 +369,7 @@ export function SidePanelApp() {
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, errorMsg]);
-      const finalMessagesWithError = [...allMessagesForAPI, errorMsg];
+      const finalMessagesWithError = [...displayMessages, errorMsg];
       await saveCurrentConversation(currentDomain, finalMessagesWithError);
     } finally {
       setIsLoading(false);
@@ -361,6 +380,14 @@ export function SidePanelApp() {
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading) return;
     await callLLMApi(inputValue);
+  };
+
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -679,9 +706,15 @@ export function SidePanelApp() {
             onKeyPress={handleKeyPress}
             placeholder="描述你想要的功能..."
             rows={3}
+            disabled={isLoading}
           />
-          <button className="send-btn" onClick={handleSend} disabled={isLoading || !inputValue.trim()}>
-            {"发送"}
+          <button
+            className={isLoading ? "stop-btn" : "send-btn"}
+            onClick={isLoading ? handleStopGeneration : handleSend}
+            disabled={!isLoading && !inputValue.trim()}
+            title={isLoading ? "停止生成" : "发送消息"}
+          >
+            {isLoading ? <span className="stop-icon">⏹</span> : "发送"}
           </button>
         </div>
       </div>
