@@ -18,6 +18,7 @@ export function SidePanelApp() {
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [sessionToRename, setSessionToRename] = useState<any>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // 使用拆分的hooks
   const {
@@ -541,70 +542,88 @@ export function SidePanelApp() {
       </Modal>
 
       {/* 侧边栏会话列表 */}
-      <div className="ai-sidebar">
-        <div className="ai-sidebar-header">
-          <button className="new-chat-btn" onClick={() => createNewSession(currentDomain)}>
-            {"+ 新建对话"}
-          </button>
-        </div>
-        <div className="ai-sidebar-content">
-          {sessions.length === 0 ? (
-            <div className="sidebar-empty">{"暂无对话"}</div>
-          ) : (
-            sessions.map((session) => (
-              <div
-                key={session.id}
-                className={`sidebar-session-item ${session.id === currentSessionId ? "active" : ""}`}
-                onClick={() => {
-                  switchToSession(currentDomain, session.id).then(setMessages);
-                }}
-              >
-                <div className="sidebar-session-title">{session.title}</div>
-                <div className="sidebar-session-actions">
-                  <button
-                    className="sidebar-action-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSessionToRename(session);
-                      setRenameValue(session.title);
-                      setRenameModalVisible(true);
-                    }}
-                    title="重命名"
-                  >
-                    {"✏️"}
-                  </button>
-                  <button
-                    className="sidebar-action-btn delete"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      Modal.confirm({
-                        title: "确认删除",
-                        content: `确定要删除会话 "${session.title}" 吗？`,
-                        okText: "删除",
-                        cancelText: "取消",
-                        onOk: () => {
-                          deleteSession(currentDomain, session.id);
-                        },
-                      });
-                    }}
-                    title="删除"
-                  >
-                    {"🗑"}
-                  </button>
+      {!isSidebarCollapsed && (
+        <div className="ai-sidebar">
+          <div className="ai-sidebar-header">
+            <button className="new-chat-btn" onClick={() => createNewSession(currentDomain)}>
+              {"+ 新建对话"}
+            </button>
+            <button
+              className="toggle-sidebar-btn"
+              onClick={() => setIsSidebarCollapsed(true)}
+              title="收起侧边栏"
+            >
+              {"←"}
+            </button>
+          </div>
+          <div className="ai-sidebar-content">
+            {sessions.length === 0 ? (
+              <div className="sidebar-empty">{"暂无对话"}</div>
+            ) : (
+              sessions.map((session) => (
+                <div
+                  key={session.id}
+                  className={`sidebar-session-item ${session.id === currentSessionId ? "active" : ""}`}
+                  onClick={() => {
+                    switchToSession(currentDomain, session.id).then(setMessages);
+                  }}
+                >
+                  <div className="sidebar-session-title">{session.title}</div>
+                  <div className="sidebar-session-actions">
+                    <button
+                      className="sidebar-action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSessionToRename(session);
+                        setRenameValue(session.title);
+                        setRenameModalVisible(true);
+                      }}
+                      title="重命名"
+                    >
+                      {"✏️"}
+                    </button>
+                    <button
+                      className="sidebar-action-btn delete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        Modal.confirm({
+                          title: "确认删除",
+                          content: `确定要删除会话 "${session.title}" 吗？`,
+                          okText: "删除",
+                          cancelText: "取消",
+                          onOk: () => {
+                            deleteSession(currentDomain, session.id);
+                          },
+                        });
+                      }}
+                      title="删除"
+                    >
+                      {"🗑"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
+          <div className="ai-sidebar-footer">
+            <div className="current-domain-badge">{currentDomain}</div>
+          </div>
         </div>
-        <div className="ai-sidebar-footer">
-          <div className="current-domain-badge">{currentDomain}</div>
-        </div>
-      </div>
+      )}
 
       {/* 主聊天区域 */}
       <div className="ai-main">
         <div className="ai-header">
           <div className="header-left">
+            {isSidebarCollapsed && (
+              <button
+                className="toggle-sidebar-btn"
+                onClick={() => setIsSidebarCollapsed(false)}
+                title="展开侧边栏"
+              >
+                {"→"}
+              </button>
+            )}
             <h2>{"AI 对话"}</h2>
           </div>
           <div className="header-actions">
