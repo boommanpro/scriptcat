@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { loadConversation, saveConversation, createSession, switchSession } from "@App/pkg/ai";
+import { deleteSession as deleteSessionApi, renameSession as renameSessionApi } from "@App/pkg/ai/storage";
 
 export const useConversation = () => {
   const [currentDomain, setCurrentDomain] = useState("");
@@ -85,6 +86,38 @@ export const useConversation = () => {
     }
   };
 
+  const deleteSession = async (domain: string, sessionId: string) => {
+    try {
+      await deleteSessionApi(domain, sessionId);
+      // 如果删除的是当前会话，切换到其他会话
+      if (currentSessionId === sessionId) {
+        const data = await loadConversation(domain);
+        const remainingSessions = data.sessions.filter((s) => s.id !== sessionId);
+        if (remainingSessions.length > 0) {
+          await switchToSession(domain, remainingSessions[0].id);
+        } else {
+          setCurrentSessionId("");
+          setMessages([]);
+        }
+      }
+      // 刷新会话列表
+      await loadConversationData(domain);
+    } catch (error) {
+      console.error("Failed to delete session:", error);
+      throw error;
+    }
+  };
+
+  const renameSession = async (domain: string, sessionId: string, newTitle: string) => {
+    try {
+      await renameSessionApi(domain, sessionId, newTitle);
+      await loadConversationData(domain);
+    } catch (error) {
+      console.error("Failed to rename session:", error);
+      throw error;
+    }
+  };
+
   const getAllConversationDomains = async (): Promise<string[]> => {
     try {
       const allStorage = await chrome.storage.local.get(null);
@@ -123,5 +156,7 @@ export const useConversation = () => {
     switchToSession,
     saveCurrentConversation,
     refreshDomains,
+    deleteSession,
+    renameSession,
   };
 };
