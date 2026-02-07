@@ -88,6 +88,7 @@ export function SidePanelApp() {
 
     initSidePanel();
     loadAIConfig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -134,7 +135,8 @@ export function SidePanelApp() {
     return () => {
       chrome.tabs.onActivated.removeListener(handleTabActivated);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadConversationData, refreshDomains]);
 
   // 核心业务逻辑函数
   const callLLMApi = async (userMessage: string): Promise<void> => {
@@ -408,7 +410,7 @@ export function SidePanelApp() {
     return () => {
       chrome.runtime.onMessage.removeListener(handleMessage);
     };
-  }, []);
+  }, [setInputValue, setIsSelecting, setSelectedElements]);
 
   const handleRunCode = async (code: string) => {
     console.log("[SidePanel-HandleRunCode] User clicked run button", {

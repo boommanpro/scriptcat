@@ -3,7 +3,7 @@ import { ScriptDAO } from "@App/app/repo/scripts";
 import { formatUnixTime } from "@App/pkg/utils/day_format";
 import { Checkbox, Descriptions, Divider, Drawer, Input, InputTag, Message, Select, Tag } from "@arco-design/web-react";
 import type { ReactNode } from "react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import Match from "./Match";
 import PermissionManager from "./Permission";
@@ -29,7 +29,7 @@ const ScriptSetting: React.FC<{
   onOk: () => void;
   onCancel: () => void;
 }> = ({ script, visible, onCancel, onOk }) => {
-  const scriptDAO = new ScriptDAO();
+  const scriptDAO = useMemo(() => new ScriptDAO(), []);
   const [scriptTags, setScriptTags] = useState<string[]>([]);
   const [checkUpdateUrl, setCheckUpdateUrl] = useState<string>("");
   const [checkUpdate, setCheckUpdate] = useState<boolean>(false);

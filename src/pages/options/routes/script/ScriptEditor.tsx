@@ -78,6 +78,7 @@ const Editor: React.FC<{
     return () => {
       node.editor.dispose();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node?.editor]);
 
   return <CodeEditor key={id} id={id} ref={ref} className={className} code={code} diffCode="" editable />;
@@ -474,6 +475,7 @@ function ScriptEditor() {
     return () => {
       document.title = "Home - ScriptCat";
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const memoUrlQueryString = useMemo(() => {
@@ -543,6 +545,7 @@ function ScriptEditor() {
         });
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canLoadScript, memoUrlQueryString]);
 
   // 控制onbeforeunload
@@ -696,6 +699,7 @@ function ScriptEditor() {
         }, 100);
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]); // 只在activeTab变化时执行
 
   return (

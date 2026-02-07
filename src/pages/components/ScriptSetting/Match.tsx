@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Script } from "@App/app/repo/scripts";
 import { ScriptDAO } from "@App/app/repo/scripts";
@@ -20,7 +20,7 @@ type MatchItem = {
 const Match: React.FC<{
   script: Script;
 }> = ({ script }) => {
-  const scriptDAO = new ScriptDAO();
+  const scriptDAO = useMemo(() => new ScriptDAO(), []);
   const [match, setMatch] = useState<MatchItem[]>([]);
   const [exclude, setExclude] = useState<MatchItem[]>([]);
   const [matchValue, setMatchValue] = useState<string>("");
@@ -30,17 +30,23 @@ const Match: React.FC<{
   const { t } = useTranslation(); // 使用 react-i18next 的 useTranslation 钩子函数获取翻译函数
 
   // 自定义的状态更新函数，会在更新后自动刷新数据
-  const updateMatchAndRefresh = (newMatch: MatchItem[]) => {
-    setMatch(newMatch);
-    refreshMatch();
-  };
+  const updateMatchAndRefresh = useCallback(
+    (newMatch: MatchItem[]) => {
+      setMatch(newMatch);
+      refreshMatch();
+    },
+    [refreshMatch]
+  );
 
-  const updateExcludeAndRefresh = (newExclude: MatchItem[]) => {
-    setExclude(newExclude);
-    refreshMatch();
-  };
+  const updateExcludeAndRefresh = useCallback(
+    (newExclude: MatchItem[]) => {
+      setExclude(newExclude);
+      refreshMatch();
+    },
+    [refreshMatch]
+  );
 
-  const refreshMatch = () => {
+  const refreshMatch = useCallback(() => {
     if (script) {
       // 从数据库中获取是简单处理数据一致性的问题
       scriptDAO.get(script.uuid).then((res) => {
@@ -83,7 +89,7 @@ const Match: React.FC<{
         setExclude(e);
       });
     }
-  };
+  }, [script, scriptDAO]);
 
   useEffect(() => {
     refreshMatch();

@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Message as ArcoMessage } from "@arco-design/web-react";
 import type { ConversationSession, DomainConversations } from "../types";
 import { loadAllConversations, deleteSession, renameSession, deleteDomainConversations } from "../storage";
@@ -10,7 +9,7 @@ export const useConversations = () => {
   const [selectedDomain, setSelectedDomain] = useState<string>("");
   const [selectedSession, setSelectedSession] = useState<ConversationSession | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const domainList = await loadAllConversations();
@@ -25,7 +24,7 @@ export const useConversations = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDomain]);
 
   const handleDeleteSession = async () => {
     if (!selectedDomain || !selectedSession) return;
@@ -72,7 +71,7 @@ export const useConversations = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   return {
     domains,

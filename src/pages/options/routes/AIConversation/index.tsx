@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-no-literals */
 import { Button, Card, Empty, Input, Space, Table, Tag, Tooltip } from "@arco-design/web-react";
 import { Card, Space, Input, Button, Table, Tag, Tooltip, Empty } from "@arco-design/web-react";
 import { IconMessage, IconEdit, IconDelete, IconRefresh, IconSearch, IconSettings } from "@arco-design/web-react/icon";

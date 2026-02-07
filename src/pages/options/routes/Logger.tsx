@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback, useMemo } from "react";
 import { BackTop, Button, Card, DatePicker, Input, List, Message, Space } from "@arco-design/web-react";
 import dayjs from "dayjs";
 import Text from "@arco-design/web-react/es/Typography/text";
@@ -21,11 +21,11 @@ function LoggerPage() {
   const [search, setSearch] = React.useState<string>("");
   const [startTime, setStartTime] = React.useState(dayjs().subtract(24, "hour").unix());
   const [endTime, setEndTime] = React.useState(dayjs().unix());
-  const loggerDAO = new LoggerDAO();
+  const loggerDAO = useMemo(() => new LoggerDAO(), []);
   const systemConfig = { logCleanCycle: 1 };
   const { t } = useTranslation();
 
-  const onQueryLog = () => {
+  const onQueryLog = useCallback(() => {
     const newQueryLogs: Logger[] = [];
     const regex = search && new RegExp(search);
     logs.forEach((log) => {
@@ -69,14 +69,14 @@ function LoggerPage() {
     });
     setInit(4);
     setQueryLogs(newQueryLogs);
-  };
+  }, [logs, querys, search]);
 
   useEffect(() => {
     if (init === 1 && defaultQuery.length && defaultQuery[0].key) {
       onQueryLog();
       setInit(2);
     }
-  }, [init]);
+  }, [init, defaultQuery, onQueryLog]);
 
   useEffect(() => {
     loggerDAO.queryLogs(startTime * 1000, endTime * 1000).then((l) => {
@@ -105,7 +105,7 @@ function LoggerPage() {
         setInit(1);
       }
     });
-  }, [startTime, endTime]);
+  }, [startTime, endTime, loggerDAO, labels, init]);
 
   return (
     <>
