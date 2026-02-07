@@ -152,7 +152,7 @@ export default defineConfig({
         },
         {
           from: `${dirname}/public/network-monitor-inject.js`,
-          to: `${dist}/ext/network-monitor-inject.js`,
+          to: `${dist}/ext/src/network-monitor-inject.js`,
         },
       ],
     }),

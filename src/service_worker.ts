@@ -62,6 +62,27 @@ async function setupOffscreenDocument() {
   }
 }
 
+// 注册网络监控 content script - 最高优先级注入
+async function registerNetworkMonitorScript() {
+  try {
+    // 先注销已存在的脚本
+    await chrome.scripting.unregisterContentScripts({ ids: ['network-monitor'] }).catch(() => {});
+    
+    // 注册新的 content script
+    await chrome.scripting.registerContentScripts([{
+      id: 'network-monitor',
+      matches: ['<all_urls>'],
+      js: ['src/network-monitor-inject.js'],
+      runAt: 'document_start', // 最早时机
+      world: 'MAIN', // 在页面主世界中运行，直接劫持 fetch/XHR
+      allFrames: true,
+    }]);
+    console.log('[Network Monitor] Content script registered with highest priority');
+  } catch (error) {
+    console.error('[Network Monitor] Failed to register content script:', error);
+  }
+}
+
 function main() {
   cleanInvalidKeys();
   // 初始化管理器
@@ -78,6 +99,8 @@ function main() {
   manager.initManager();
   // 初始化沙盒环境
   setupOffscreenDocument();
+  // 注册网络监控脚本 - 最高优先级
+  registerNetworkMonitorScript();
 }
 
 const apiActions: {
