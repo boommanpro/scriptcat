@@ -4,6 +4,8 @@ import { ConfigProvider } from "@arco-design/web-react";
 import zhCN from "@arco-design/web-react/es/locale/zh-CN";
 import "@arco-design/web-react/dist/css/arco.css";
 import "./sidepanel.css";
+import "@App/index.css";
+import "@App/pages/sidepanel/sidepanel.css";
 import { SidePanelApp } from "@App/pages/sidepanel/SidePanelApp.tsx";
 
 function App() {
