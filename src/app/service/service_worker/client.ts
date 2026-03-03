@@ -18,6 +18,7 @@ import { type ScriptInfo } from "@App/pkg/utils/scriptInstall";
 import type { ScriptService, TCheckScriptUpdateOption, TOpenBatchUpdatePageOption } from "./script";
 import type { CSPRule } from "@App/app/repo/cspRule";
 import type { AutomationScript, AutomationTestLog } from "@App/app/repo/automationScript";
+import type { PostMessageConfig } from "./automationScript";
 
 export class ServiceWorkerClient extends Client {
   constructor(msgSender: MessageSend) {
@@ -491,8 +492,13 @@ export class AutomationScriptClient extends Client {
     return this.do("deleteTestLog", id);
   }
 
-  runTest(scriptKey: string, inputJson: string, tabId?: number): Promise<AutomationTestLog> {
-    return this.doThrow("runTest", { scriptKey, inputJson, tabId });
+  runTest(
+    scriptKey: string,
+    inputJson: string,
+    tabId?: number,
+    postMessageConfig?: PostMessageConfig
+  ): Promise<AutomationTestLog> {
+    return this.doThrow("runTest", { scriptKey, inputJson, tabId, postMessageConfig });
   }
 
   openTargetPage(scriptKey: string): Promise<number> {
@@ -506,8 +512,9 @@ export class AutomationScriptClient extends Client {
   executeScript(
     scriptKey: string,
     input: any,
-    tabId?: number
+    tabId?: number,
+    postMessageConfig?: PostMessageConfig
   ): Promise<{ success: boolean; result?: any; error?: string }> {
-    return this.doThrow("executeScript", scriptKey, input, tabId);
+    return this.doThrow("executeScript", scriptKey, input, tabId, postMessageConfig);
   }
 }

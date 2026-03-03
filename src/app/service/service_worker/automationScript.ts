@@ -15,6 +15,13 @@ export interface ExecuteResult {
   result?: any;
   error?: string;
   errorType?: string;
+  source?: string;
+}
+
+export interface PostMessageConfig {
+  messageType?: string;
+  timeout?: number;
+  waitForMessage?: boolean;
 }
 
 export class AutomationScriptService {
@@ -119,8 +126,13 @@ export class AutomationScriptService {
     return tabs.filter((tab) => tab.url && !tab.url.startsWith("chrome://"));
   }
 
-  async runTest(params: { scriptKey: string; inputJson: string; tabId?: number }): Promise<AutomationTestLog> {
-    const { scriptKey, inputJson, tabId } = params;
+  async runTest(params: {
+    scriptKey: string;
+    inputJson: string;
+    tabId?: number;
+    postMessageConfig?: PostMessageConfig;
+  }): Promise<AutomationTestLog> {
+    const { scriptKey, inputJson, tabId, postMessageConfig } = params;
     const script = await this.getByKey(scriptKey);
     if (!script) {
       throw new Error("Script not found");
@@ -137,7 +149,7 @@ export class AutomationScriptService {
       let inputData: any;
       try {
         inputData = JSON.parse(inputJson);
-      } catch (e) {
+      } catch {
         throw new Error("Invalid input JSON");
       }
 
@@ -157,7 +169,7 @@ export class AutomationScriptService {
         }
       }
 
-      const result = await this.executeScriptInTab(targetTabId!, script.script, inputData);
+      const result = await this.executeScriptInTab(targetTabId!, script.script, inputData, postMessageConfig);
       const duration = Date.now() - startTime;
 
       if (!result.success) {
@@ -204,8 +216,19 @@ export class AutomationScriptService {
     });
   }
 
-  private async executeScriptInTab(tabId: number, scriptCode: string, input: any): Promise<ExecuteResult> {
+  private async executeScriptInTab(
+    tabId: number,
+    scriptCode: string,
+    input: any,
+    postMessageConfig?: PostMessageConfig
+  ): Promise<ExecuteResult> {
     try {
+      const config: PostMessageConfig = {
+        messageType: postMessageConfig?.messageType || "*",
+        timeout: postMessageConfig?.timeout || 30000,
+        waitForMessage: postMessageConfig?.waitForMessage || false,
+      };
+
       const wrappedCode = `
         return (async function(input) {
           ${scriptCode}
@@ -215,8 +238,53 @@ export class AutomationScriptService {
       const result = await chrome.scripting.executeScript({
         target: { tabId },
         world: "MAIN",
-        func: (codeToExecute: string) => {
+        func: (codeToExecute: string, pmConfig: PostMessageConfig) => {
           try {
+            if (pmConfig.waitForMessage) {
+              return new Promise((resolve) => {
+                const timeout = setTimeout(() => {
+                  window.removeEventListener("message", messageHandler);
+                  resolve({
+                    success: false,
+                    error: "PostMessage timeout",
+                    errorType: "TimeoutError",
+                  });
+                }, pmConfig.timeout);
+
+                const messageHandler = (event: MessageEvent) => {
+                  if (pmConfig.messageType !== "*" && event.data?.type !== pmConfig.messageType) {
+                    return;
+                  }
+
+                  clearTimeout(timeout);
+                  window.removeEventListener("message", messageHandler);
+
+                  resolve({
+                    success: true,
+                    result: event.data,
+                    source: event.origin,
+                  });
+                };
+
+                window.addEventListener("message", messageHandler);
+
+                const fn = new Function(codeToExecute);
+                const scriptResult = fn();
+
+                if (scriptResult instanceof Promise) {
+                  scriptResult.catch((err) => {
+                    clearTimeout(timeout);
+                    window.removeEventListener("message", messageHandler);
+                    resolve({
+                      success: false,
+                      error: String(err),
+                      errorType: err.constructor.name,
+                    });
+                  });
+                }
+              });
+            }
+
             const fn = new Function(codeToExecute);
             const result = fn();
             if (result instanceof Promise) {
@@ -227,7 +295,7 @@ export class AutomationScriptService {
             return { success: false, error: String(error), errorType: error.constructor.name };
           }
         },
-        args: [wrappedCode],
+        args: [wrappedCode, config],
       });
 
       return result[0]?.result || { success: false, error: "No result returned" };
@@ -236,7 +304,12 @@ export class AutomationScriptService {
     }
   }
 
-  async executeScript(scriptKey: string, input: any, tabId?: number): Promise<ExecuteResult> {
+  async executeScript(
+    scriptKey: string,
+    input: any,
+    tabId?: number,
+    postMessageConfig?: PostMessageConfig
+  ): Promise<ExecuteResult> {
     const script = await this.getByKey(scriptKey);
     if (!script) {
       throw new Error("Script not found");
@@ -258,7 +331,7 @@ export class AutomationScriptService {
       }
     }
 
-    return this.executeScriptInTab(targetTabId!, script.script, input);
+    return this.executeScriptInTab(targetTabId!, script.script, input, postMessageConfig);
   }
 
   async openTargetPage(scriptKey: string): Promise<number> {

@@ -13,11 +13,13 @@ import {
   Table,
   Select,
   Tooltip,
+  InputNumber,
 } from "@arco-design/web-react";
 import { IconSave, IconLeft, IconPlayArrow, IconRefresh } from "@arco-design/web-react/icon";
 import type { AutomationScript, AutomationTestLog } from "@App/app/repo/automationScript";
 import { formatUnixTime } from "@App/pkg/utils/day_format";
 import { AutomationScriptClient } from "@App/app/service/service_worker/client";
+import type { PostMessageConfig } from "@App/app/service/service_worker/automationScript";
 import { message } from "@App/pages/store/global";
 import CodeEditor from "@App/pages/components/CodeEditor";
 import { v4 as uuidv4 } from "uuid";
@@ -86,6 +88,10 @@ const AutomationScriptEditor: React.FC = () => {
   const [testLogs, setTestLogs] = useState<AutomationTestLog[]>([]);
   const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
   const [selectedTabId, setSelectedTabId] = useState<number | undefined>();
+
+  const [waitForPostMessage, setWaitForPostMessage] = useState(false);
+  const [messageType, setMessageType] = useState("");
+  const [messageTimeout, setMessageTimeout] = useState(30000);
 
   const automationClient = new AutomationScriptClient(message);
   const scriptId = params.id;
@@ -217,7 +223,15 @@ const AutomationScriptEditor: React.FC = () => {
 
     setTestRunning(true);
     try {
-      const log = await automationClient.runTest(editingScript.key, testInput, selectedTabId);
+      const postMessageConfig: PostMessageConfig | undefined = waitForPostMessage
+        ? {
+            waitForMessage: true,
+            messageType: messageType || "*",
+            timeout: messageTimeout,
+          }
+        : undefined;
+
+      const log = await automationClient.runTest(editingScript.key, testInput, selectedTabId, postMessageConfig);
       setTestLogs([log, ...testLogs]);
       if (log.status === "success") {
         Message.success("测试成功");
@@ -373,6 +387,37 @@ const AutomationScriptEditor: React.FC = () => {
                 rows={4}
                 style={{ fontSize: 12 }}
               />
+            </div>
+
+            <div className="mb-2">
+              <div className="flex items-center justify-between mb-1">
+                <Text bold>等待 PostMessage 响应</Text>
+                <Switch size="small" checked={waitForPostMessage} onChange={setWaitForPostMessage} />
+              </div>
+              {waitForPostMessage && (
+                <div className="mt-2 space-y-2">
+                  <div>
+                    <Text className="block mb-1 text-xs">消息类型 (可选)</Text>
+                    <Input
+                      placeholder="例如: SCRIPTCAT_RESPONSE"
+                      value={messageType}
+                      onChange={setMessageType}
+                      size="small"
+                    />
+                  </div>
+                  <div>
+                    <Text className="block mb-1 text-xs">超时时间 (ms)</Text>
+                    <InputNumber
+                      min={1000}
+                      max={120000}
+                      value={messageTimeout}
+                      onChange={(val) => setMessageTimeout(val || 30000)}
+                      size="small"
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <Space className="mb-2">
