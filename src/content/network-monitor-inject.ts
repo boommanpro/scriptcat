@@ -1,8 +1,8 @@
 // 网络监控注入脚本 - 在 MAIN world 中运行
 // 这个脚本会被注入到页面中，劫持 fetch 和 XMLHttpRequest
 
-(function() {
-  'use strict';
+(function () {
+  "use strict";
 
   // 检查是否已经注入
   if ((window as any).__networkMonitorInjected) {
@@ -31,14 +31,14 @@
   };
 
   // 拦截 fetch
-  window.fetch = async function(...args) {
+  window.fetch = async function (...args) {
     if (!(window as any).__networkMonitorEnabled) {
       return originalFetch.apply(this, args);
     }
 
     const [input, init] = args;
-    const url = typeof input === 'string' ? input : input.url;
-    const method = (init?.method || 'GET').toUpperCase();
+    const url = typeof input === "string" ? input : input.url;
+    const method = (init?.method || "GET").toUpperCase();
     const requestId = generateId();
     const startTime = Date.now();
 
@@ -87,7 +87,7 @@
   };
 
   // 拦截 XMLHttpRequest
-  XMLHttpRequest.prototype.open = function(method: string, url: string, ...args: any[]) {
+  XMLHttpRequest.prototype.open = function (method: string, url: string, ...args: any[]) {
     (this as any).__chobitsuRequest = {
       method: method.toUpperCase(),
       url: url.toString(),
@@ -95,7 +95,7 @@
     return originalXHROpen.apply(this, [method, url, ...args]);
   };
 
-  XMLHttpRequest.prototype.send = function(body?: any) {
+  XMLHttpRequest.prototype.send = function (body?: any) {
     if (!(window as any).__networkMonitorEnabled || !(this as any).__chobitsuRequest) {
       return originalXHRSend.apply(this, [body]);
     }
@@ -120,8 +120,8 @@
 
       const headerString = this.getAllResponseHeaders();
       if (headerString) {
-        headerString.split('\n').forEach(line => {
-          const [key, value] = line.split(': ');
+        headerString.split("\n").forEach((line) => {
+          const [key, value] = line.split(": ");
           if (key && value) {
             responseHeaders[key.toLowerCase()] = value;
           }
@@ -149,9 +149,9 @@
       });
     };
 
-    this.addEventListener('load', onLoad);
-    this.addEventListener('error', onError);
-    this.addEventListener('timeout', onError);
+    this.addEventListener("load", onLoad);
+    this.addEventListener("error", onError);
+    this.addEventListener("timeout", onError);
 
     return originalXHRSend.apply(this, [body]);
   };

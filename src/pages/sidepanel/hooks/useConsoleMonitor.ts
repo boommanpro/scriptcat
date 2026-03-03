@@ -42,7 +42,13 @@ export const useConsoleMonitor = () => {
           let logIdCounter = 0;
           const generateId = () => `log-${++logIdCounter}-${Date.now()}`;
 
-          const addEntry = (level: string, message: string, source: string, line: number | null, column: number | null) => {
+          const addEntry = (
+            level: string,
+            message: string,
+            source: string,
+            line: number | null,
+            column: number | null
+          ) => {
             if (!(window as any).__consoleMonitorEnabled) return;
             if (!(window as any).__consoleMonitorData) {
               (window as any).__consoleMonitorData = [];
@@ -63,43 +69,45 @@ export const useConsoleMonitor = () => {
 
           const getStackTrace = () => {
             try {
-              throw new Error('Stack trace');
+              throw new Error("Stack trace");
             } catch (error) {
-              return (error as Error).stack || '';
+              return (error as Error).stack || "";
             }
           };
 
           const getSourceInfo = (stack: string) => {
-            if (!stack) return { source: 'unknown', line: null as number | null, column: null as number | null };
+            if (!stack) return { source: "unknown", line: null as number | null, column: null as number | null };
 
-            const lines = stack.split('\n');
+            const lines = stack.split("\n");
             for (let i = 2; i < lines.length; i++) {
               const line = lines[i];
-              if (line && !line.includes('console') && !line.includes('__console')) {
+              if (line && !line.includes("console") && !line.includes("__console")) {
                 const match = line.match(/\s+at\s+.*\s*\(?(https?:\/\/[^:]+):(\d+):(\d+)\)?/);
                 if (match) {
                   return {
-                    source: match[1].split('/').pop()?.split('?')[0] || 'unknown',
+                    source: match[1].split("/").pop()?.split("?")[0] || "unknown",
                     line: parseInt(match[2]),
                     column: parseInt(match[3]),
                   };
                 }
               }
             }
-            return { source: 'unknown', line: null, column: null };
+            return { source: "unknown", line: null, column: null };
           };
 
           const createLogEntry = (level: string, args: any[]) => {
-            const message = args.map((arg: any) => {
-              if (typeof arg === 'object') {
-                try {
-                  return JSON.stringify(arg);
-                } catch {
-                  return String(arg);
+            const message = args
+              .map((arg: any) => {
+                if (typeof arg === "object") {
+                  try {
+                    return JSON.stringify(arg);
+                  } catch {
+                    return String(arg);
+                  }
                 }
-              }
-              return String(arg);
-            }).join(' ');
+                return String(arg);
+              })
+              .join(" ");
 
             const stack = getStackTrace();
             const { source, line, column } = getSourceInfo(stack);
@@ -109,10 +117,12 @@ export const useConsoleMonitor = () => {
 
           const wrapConsoleMethod = (methodName: string) => {
             console[methodName] = function (...args: any[]) {
-              if (args.some((arg: any) =>
-                typeof arg === 'string' &&
-                (arg.includes('[Console Monitor]') || arg.includes('__console'))
-              )) {
+              if (
+                args.some(
+                  (arg: any) =>
+                    typeof arg === "string" && (arg.includes("[Console Monitor]") || arg.includes("__console"))
+                )
+              ) {
                 return originalConsole[methodName as keyof typeof originalConsole].apply(console, args);
               }
 
@@ -129,26 +139,22 @@ export const useConsoleMonitor = () => {
             wrapConsoleMethod(method);
           });
 
-          window.addEventListener('error', (event) => {
+          window.addEventListener("error", (event) => {
             if (!(window as any).__consoleMonitorEnabled) return;
 
-            addEntry('error',
+            addEntry(
+              "error",
               `${event.message} at ${event.filename}:${event.lineno}:${event.colno}`,
-              event.filename?.split('/').pop()?.split('?')[0] || 'unknown',
+              event.filename?.split("/").pop()?.split("?")[0] || "unknown",
               event.lineno,
               event.colno
             );
           });
 
-          window.addEventListener('unhandledrejection', (event) => {
+          window.addEventListener("unhandledrejection", (event) => {
             if (!(window as any).__consoleMonitorEnabled) return;
 
-            addEntry('error',
-              `Unhandled Promise Rejection: ${event.reason}`,
-              'unknown',
-              null,
-              null
-            );
+            addEntry("error", `Unhandled Promise Rejection: ${event.reason}`, "unknown", null, null);
 
             event.preventDefault();
           });
@@ -193,7 +199,7 @@ export const useConsoleMonitor = () => {
 
     // 监听标签页更新事件（页面刷新）
     const handleTabUpdated = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
-      if (changeInfo.status === 'complete' && isRecordingRef.current && currentTabIdRef.current === tabId) {
+      if (changeInfo.status === "complete" && isRecordingRef.current && currentTabIdRef.current === tabId) {
         console.log("[Console Monitor] Tab refreshed, re-injecting script...");
         // 页面刷新后重新注入脚本
         setTimeout(() => {
@@ -309,9 +315,12 @@ export const useConsoleMonitor = () => {
     return consoleLogs.filter((log) => log.selected);
   }, [consoleLogs]);
 
-  const getLogById = useCallback((id: string) => {
-    return consoleLogs.find((log) => log.id === id);
-  }, [consoleLogs]);
+  const getLogById = useCallback(
+    (id: string) => {
+      return consoleLogs.find((log) => log.id === id);
+    },
+    [consoleLogs]
+  );
 
   const formatLogForPrompt = useCallback((log: ConsoleLog) => {
     const lines = [

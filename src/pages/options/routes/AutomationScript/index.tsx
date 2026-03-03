@@ -14,13 +14,7 @@ import {
   Input,
   Switch,
 } from "@arco-design/web-react";
-import {
-  IconPlus,
-  IconEdit,
-  IconDelete,
-  IconPlayArrow,
-  IconCode,
-} from "@arco-design/web-react/icon";
+import { IconPlus, IconEdit, IconDelete, IconPlayArrow, IconCode } from "@arco-design/web-react/icon";
 import type { ColumnProps } from "@arco-design/web-react/es/Table";
 import type { AutomationScript, AutomationTestLog } from "@App/app/repo/automationScript";
 import { formatUnixTime } from "@App/pkg/utils/day_format";
@@ -194,21 +188,11 @@ const AutomationScriptManage: React.FC = () => {
             测试
           </Button>
           {record.targetUrl && (
-            <Button
-              type="text"
-              size="small"
-              icon={<IconCode />}
-              onClick={() => handleOpenTargetPage(record.key)}
-            >
+            <Button type="text" size="small" icon={<IconCode />} onClick={() => handleOpenTargetPage(record.key)}>
               打开
             </Button>
           )}
-          <Popconfirm
-            title="确定删除此脚本吗？"
-            onOk={() => handleDelete(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
+          <Popconfirm title="确定删除此脚本吗？" onOk={() => handleDelete(record.id)} okText="确定" cancelText="取消">
             <Button type="text" size="small" status="danger" icon={<IconDelete />}>
               删除
             </Button>

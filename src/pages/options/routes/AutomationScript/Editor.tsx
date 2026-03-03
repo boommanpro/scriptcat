@@ -50,7 +50,7 @@ const ScriptEditorComponent: React.FC<{
   );
 
   useEffect(() => {
-    if (!node || !node.editor) {
+    if (!node?.editor) {
       return;
     }
     const editorInstance = node.editor;
@@ -62,19 +62,11 @@ const ScriptEditorComponent: React.FC<{
       handler.dispose();
       editorInstance.dispose();
     };
-  }, [node?.editor]);
+  }, [node]);
 
   return (
-    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-      <CodeEditor 
-        key={id} 
-        id={id} 
-        ref={ref} 
-        code={code} 
-        diffCode="" 
-        editable 
-        className="script-code-editor"
-      />
+    <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+      <CodeEditor key={id} id={id} ref={ref} code={code} diffCode="" editable className="script-code-editor" />
     </div>
   );
 };
@@ -88,7 +80,7 @@ const AutomationScriptEditor: React.FC = () => {
   const [scriptCode, setScriptCode] = useState("");
   const [editorId, setEditorId] = useState("");
   const [editingScript, setEditingScript] = useState<AutomationScript | null>(null);
-  
+
   const [testInput, setTestInput] = useState("{}");
   const [testRunning, setTestRunning] = useState(false);
   const [testLogs, setTestLogs] = useState<AutomationTestLog[]>([]);
@@ -118,7 +110,7 @@ const AutomationScriptEditor: React.FC = () => {
         script: defaultCode,
       });
     }
-    
+
     loadTabs();
   }, [scriptId]);
 
@@ -135,7 +127,7 @@ const AutomationScriptEditor: React.FC = () => {
     setLoading(true);
     try {
       const scripts = await automationClient.getAllScripts();
-      const script = scripts.find(s => s.id === id);
+      const script = scripts.find((s) => s.id === id);
       if (script) {
         setEditingScript(script);
         form.setFieldsValue(script);
@@ -163,10 +155,10 @@ const AutomationScriptEditor: React.FC = () => {
   const handleSave = async () => {
     try {
       await form.validate();
-      
+
       const formValues = form.getFieldsValue();
       const scriptValue = scriptCode || formValues.script || "";
-      
+
       if (!scriptValue || scriptValue.trim() === "") {
         Message.error("请输入执行脚本");
         return;
@@ -321,24 +313,29 @@ const AutomationScriptEditor: React.FC = () => {
           </Form>
         </Card>
 
-        <Card 
-          className="flex-1 m-2 ml-0 flex flex-col overflow-hidden" 
-          title="执行脚本" 
-          style={{ display: 'flex', flexDirection: 'column' }}
-          bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0, minHeight: 0 }}
+        <Card
+          className="flex-1 m-2 ml-0 flex flex-col overflow-hidden"
+          title="执行脚本"
+          style={{ display: "flex", flexDirection: "column" }}
+          bodyStyle={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            padding: 0,
+            minHeight: 0,
+          }}
         >
-          <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-            {editorId && (
-              <ScriptEditorComponent
-                id={editorId}
-                code={scriptCode}
-                onChange={handleScriptChange}
-              />
-            )}
+          <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+            {editorId && <ScriptEditorComponent id={editorId} code={scriptCode} onChange={handleScriptChange} />}
           </div>
         </Card>
 
-        <Card className="w-80 flex-shrink-0 m-2 ml-0 flex flex-col overflow-hidden" title="测试" bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '8px' }}>
+        <Card
+          className="w-80 flex-shrink-0 m-2 ml-0 flex flex-col overflow-hidden"
+          title="测试"
+          bodyStyle={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "8px" }}
+        >
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="mb-2">
               <div className="flex justify-between items-center mb-1">
@@ -351,11 +348,11 @@ const AutomationScriptEditor: React.FC = () => {
                 placeholder="选择标签页或使用目标网址"
                 value={selectedTabId}
                 onChange={(val) => setSelectedTabId(val)}
-                style={{ width: '100%' }}
+                style={{ width: "100%" }}
                 size="small"
                 allowClear
               >
-                {tabs.map(tab => (
+                {tabs.map((tab) => (
                   <Option key={tab.id} value={tab.id!}>
                     <Tooltip content={tab.url}>
                       <span className="text-xs truncate block">{tab.title || tab.url}</span>
@@ -366,7 +363,9 @@ const AutomationScriptEditor: React.FC = () => {
             </div>
 
             <div className="mb-2">
-              <Text bold className="block mb-1">输入参数 (JSON)</Text>
+              <Text bold className="block mb-1">
+                输入参数 (JSON)
+              </Text>
               <Input.TextArea
                 value={testInput}
                 onChange={setTestInput}
@@ -375,12 +374,12 @@ const AutomationScriptEditor: React.FC = () => {
                 style={{ fontSize: 12 }}
               />
             </div>
-            
+
             <Space className="mb-2">
-              <Button 
-                type="primary" 
-                icon={<IconPlayArrow />} 
-                onClick={handleRunTest} 
+              <Button
+                type="primary"
+                icon={<IconPlayArrow />}
+                onClick={handleRunTest}
                 loading={testRunning}
                 disabled={!editingScript}
                 size="small"
@@ -388,18 +387,16 @@ const AutomationScriptEditor: React.FC = () => {
                 {editingScript ? "执行测试" : "请先保存"}
               </Button>
               {editingScript?.targetUrl && (
-                <Button 
-                  icon={<IconPlayArrow />} 
-                  onClick={handleOpenTargetPage}
-                  size="small"
-                >
+                <Button icon={<IconPlayArrow />} onClick={handleOpenTargetPage} size="small">
                   打开目标页
                 </Button>
               )}
             </Space>
-            
+
             <div className="mt-2 flex-1 overflow-hidden flex flex-col">
-              <Text bold className="block mb-2">测试历史</Text>
+              <Text bold className="block mb-2">
+                测试历史
+              </Text>
               <div className="flex-1 overflow-auto">
                 <Table
                   columns={logColumns}

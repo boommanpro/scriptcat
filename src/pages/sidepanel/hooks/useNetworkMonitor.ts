@@ -102,7 +102,7 @@ export const useNetworkMonitor = () => {
 
     // 监听标签页更新事件（页面刷新）
     const handleTabUpdated = (tabId: number, changeInfo: any) => {
-      if (changeInfo.status === 'complete' && isRecordingRef.current && currentTabIdRef.current === tabId) {
+      if (changeInfo.status === "complete" && isRecordingRef.current && currentTabIdRef.current === tabId) {
         console.log("[Network Monitor] Tab refreshed, re-enabling monitor...");
         // 页面刷新后重新启用监控（content script 会自动重新注入）
         setTimeout(() => {

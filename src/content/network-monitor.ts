@@ -2,9 +2,9 @@
 // 作为桥梁，从 MAIN world 获取数据并发送到 Service Worker
 
 (function () {
-  'use strict';
+  "use strict";
 
-  console.log('[Network Monitor Bridge] Content script loaded in isolated world');
+  console.log("[Network Monitor Bridge] Content script loaded in isolated world");
 
   // 定期从 MAIN world 获取数据并发送到 Service Worker
   setInterval(async () => {
@@ -18,19 +18,21 @@
   }, 500);
 
   // 监听来自 MAIN world 的消息（通过 window.postMessage）
-  window.addEventListener('message', (event) => {
+  window.addEventListener("message", (event) => {
     if (event.source !== window) return;
 
-    if (event.data && event.data.source === 'network-monitor-main') {
+    if (event.data && event.data.source === "network-monitor-main") {
       // 转发到 Service Worker
       try {
-        chrome.runtime.sendMessage({
-          type: event.data.type,
-          data: event.data.data,
-        }).catch(() => { });
+        chrome.runtime
+          .sendMessage({
+            type: event.data.type,
+            data: event.data.data,
+          })
+          .catch(() => {});
       } catch (error) {
         // 扩展上下文已失效，忽略错误
-        console.log('[Network Monitor Bridge] Extension context invalidated, stopping message forwarding');
+        console.log("[Network Monitor Bridge] Extension context invalidated, stopping message forwarding");
       }
     }
   });

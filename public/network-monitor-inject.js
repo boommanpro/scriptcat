@@ -2,8 +2,8 @@
 // 这个脚本会被注入到页面中，劫持 fetch 和 XMLHttpRequest
 // 所有请求都会被拦截，根据 __networkMonitorEnabled 状态决定是否记录
 
-(function() {
-  'use strict';
+(function () {
+  "use strict";
 
   // 检查是否已经注入
   if (window.__networkMonitorInjected) {
@@ -21,15 +21,18 @@
   const originalXHRSend = XMLHttpRequest.prototype.send;
   let requestIdCounter = 0;
 
-  const generateId = () => 'req-' + (++requestIdCounter) + '-' + Date.now();
+  const generateId = () => "req-" + ++requestIdCounter + "-" + Date.now();
 
   // 发送数据到 isolated world 的 content script
   const sendToIsolated = (type, data) => {
-    window.postMessage({
-      source: 'network-monitor-main',
-      type: type,
-      data: data,
-    }, '*');
+    window.postMessage(
+      {
+        source: "network-monitor-main",
+        type: type,
+        data: data,
+      },
+      "*"
+    );
   };
 
   // 保存请求到数组（仅在启用时）
@@ -44,10 +47,10 @@
   };
 
   // ==================== 拦截 fetch ====================
-  window.fetch = async function(...args) {
+  window.fetch = async function (...args) {
     const [input, init] = args;
-    const url = typeof input === 'string' ? input : input.url;
-    const method = (init?.method || 'GET').toUpperCase();
+    const url = typeof input === "string" ? input : input.url;
+    const method = (init?.method || "GET").toUpperCase();
     const requestId = generateId();
     const startTime = Date.now();
 
@@ -86,7 +89,7 @@
       return response;
     } catch (error) {
       const duration = Date.now() - startTime;
-      
+
       // 如果启用监控，保存错误信息
       saveRequest("NETWORK_RESPONSE", {
         id: requestId,
@@ -96,13 +99,13 @@
         duration,
         error: String(error),
       });
-      
+
       throw error;
     }
   };
 
   // ==================== 拦截 XMLHttpRequest ====================
-  XMLHttpRequest.prototype.open = function(method, url, ...args) {
+  XMLHttpRequest.prototype.open = function (method, url, ...args) {
     // 保存请求信息到 XHR 对象
     this.__networkMonitorRequest = {
       method: method.toUpperCase(),
@@ -111,7 +114,7 @@
     return originalXHROpen.apply(this, [method, url, ...args]);
   };
 
-  XMLHttpRequest.prototype.send = function(body) {
+  XMLHttpRequest.prototype.send = function (body) {
     const requestId = generateId();
     const startTime = Date.now();
     const requestInfo = this.__networkMonitorRequest;
@@ -131,16 +134,16 @@
     // 设置响应监听
     const onLoad = () => {
       if (!window.__networkMonitorEnabled) return;
-      
+
       const duration = Date.now() - startTime;
       const responseHeaders = {};
 
       const headerString = this.getAllResponseHeaders();
       if (headerString) {
-        headerString.split('\n').forEach(line => {
-          const parts = line.split(': ');
+        headerString.split("\n").forEach((line) => {
+          const parts = line.split(": ");
           if (parts.length >= 2) {
-            responseHeaders[parts[0].toLowerCase()] = parts.slice(1).join(': ');
+            responseHeaders[parts[0].toLowerCase()] = parts.slice(1).join(": ");
           }
         });
       }
@@ -156,7 +159,7 @@
 
     const onError = () => {
       if (!window.__networkMonitorEnabled) return;
-      
+
       const duration = Date.now() - startTime;
       saveRequest("NETWORK_RESPONSE", {
         id: requestId,
@@ -168,9 +171,9 @@
       });
     };
 
-    this.addEventListener('load', onLoad);
-    this.addEventListener('error', onError);
-    this.addEventListener('timeout', onError);
+    this.addEventListener("load", onLoad);
+    this.addEventListener("error", onError);
+    this.addEventListener("timeout", onError);
 
     return originalXHRSend.apply(this, [body]);
   };

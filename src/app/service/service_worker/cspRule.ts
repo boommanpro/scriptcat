@@ -1,7 +1,7 @@
 import type { Group } from "@Packages/message/server";
 import type { IMessageQueue } from "@Packages/message/message_queue";
 import { CSPRuleDAO, type CSPRule } from "@App/app/repo/cspRule";
-import Logger from "@App/app/logger/logger";
+import type Logger from "@App/app/logger/logger";
 import LoggerCore from "@App/app/logger/core";
 import { v4 as uuidv4 } from "uuid";
 
@@ -9,7 +9,10 @@ export class CSPRuleService {
   private logger: Logger;
   private cspRuleDAO: CSPRuleDAO;
 
-  constructor(private group: Group, private mq: IMessageQueue) {
+  constructor(
+    private group: Group,
+    private mq: IMessageQueue
+  ) {
     this.logger = LoggerCore.logger().with({ service: "cspRule" });
     this.cspRuleDAO = new CSPRuleDAO();
   }

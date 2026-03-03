@@ -6,7 +6,7 @@ import {
   type AutomationScript,
   type AutomationTestLog,
 } from "@App/app/repo/automationScript";
-import Logger from "@App/app/logger/logger";
+import type Logger from "@App/app/logger/logger";
 import LoggerCore from "@App/app/logger/core";
 import { v4 as uuidv4 } from "uuid";
 
@@ -22,7 +22,10 @@ export class AutomationScriptService {
   private scriptDAO: AutomationScriptDAO;
   private testLogDAO: AutomationTestLogDAO;
 
-  constructor(private group: Group, private mq: IMessageQueue) {
+  constructor(
+    private group: Group,
+    private mq: IMessageQueue
+  ) {
     this.logger = LoggerCore.logger().with({ service: "automationScript" });
     this.scriptDAO = new AutomationScriptDAO();
     this.testLogDAO = new AutomationTestLogDAO();
@@ -40,9 +43,7 @@ export class AutomationScriptService {
     return this.scriptDAO.getByKey(key);
   }
 
-  async createScript(
-    script: Omit<AutomationScript, "id" | "createtime" | "updatetime">
-  ): Promise<AutomationScript> {
+  async createScript(script: Omit<AutomationScript, "id" | "createtime" | "updatetime">): Promise<AutomationScript> {
     const existing = await this.scriptDAO.getByKey(script.key);
     if (existing) {
       throw new Error("Script key already exists");
@@ -115,7 +116,7 @@ export class AutomationScriptService {
 
   async getActiveTabs(): Promise<chrome.tabs.Tab[]> {
     const tabs = await chrome.tabs.query({ active: false });
-    return tabs.filter(tab => tab.url && !tab.url.startsWith('chrome://'));
+    return tabs.filter((tab) => tab.url && !tab.url.startsWith("chrome://"));
   }
 
   async runTest(params: { scriptKey: string; inputJson: string; tabId?: number }): Promise<AutomationTestLog> {
@@ -141,7 +142,7 @@ export class AutomationScriptService {
       }
 
       let targetTabId = tabId;
-      
+
       if (!targetTabId) {
         if (script.targetUrl) {
           const tab = await chrome.tabs.create({ url: script.targetUrl, active: false });
@@ -242,7 +243,7 @@ export class AutomationScriptService {
     }
 
     let targetTabId = tabId;
-    
+
     if (!targetTabId) {
       if (script.targetUrl) {
         const tab = await chrome.tabs.create({ url: script.targetUrl, active: false });

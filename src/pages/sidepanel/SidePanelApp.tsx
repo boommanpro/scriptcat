@@ -485,11 +485,11 @@ export function SidePanelApp() {
 
   useEffect(() => {
     console.log("[SidePanel] Setting up message listener...");
-    
+
     const handleMessage = (message: any, sender: any, sendResponse: any) => {
       console.log("[SidePanel] Received message:", message.type || message.message, message);
       console.log("[SidePanel] Sender:", sender);
-      
+
       if (message.type === "NETWORK_REQUEST") {
         console.log("[SidePanel] Processing NETWORK_REQUEST, data:", message.data);
         addNetworkRequestRef.current(message.data);
@@ -844,22 +844,22 @@ export function SidePanelApp() {
             }
           }}
           onDoubleClickNetworkRequest={(request) => {
-            console.log('[SidePanel] Network request double clicked:', request.id, request.url);
+            console.log("[SidePanel] Network request double clicked:", request.id, request.url);
             const formatted = formatRequestForPrompt(request);
-            console.log('[SidePanel] Formatted network request:', formatted.substring(0, 100) + '...');
+            console.log("[SidePanel] Formatted network request:", formatted.substring(0, 100) + "...");
             setInputValue((prev) => {
               const newValue = `${formatted}${prev ? `\n\n${prev}` : ""}`;
-              console.log('[SidePanel] Setting input value, length:', newValue.length);
+              console.log("[SidePanel] Setting input value, length:", newValue.length);
               return newValue;
             });
           }}
           onDoubleClickConsoleLog={(log) => {
-            console.log('[SidePanel] Console log double clicked:', log.id, log.message.substring(0, 50));
+            console.log("[SidePanel] Console log double clicked:", log.id, log.message.substring(0, 50));
             const formatted = formatLogForPrompt(log);
-            console.log('[SidePanel] Formatted console log:', formatted.substring(0, 100) + '...');
+            console.log("[SidePanel] Formatted console log:", formatted.substring(0, 100) + "...");
             setInputValue((prev) => {
               const newValue = `${formatted}${prev ? `\n\n${prev}` : ""}`;
-              console.log('[SidePanel] Setting input value, length:', newValue.length);
+              console.log("[SidePanel] Setting input value, length:", newValue.length);
               return newValue;
             });
           }}

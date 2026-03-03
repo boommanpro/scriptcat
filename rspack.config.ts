@@ -237,9 +237,15 @@ export default defineConfig({
     splitChunks: {
       chunks: (chunk) => {
         // 排除这些文件，不进行分离
-        return !["editor.worker", "ts.worker", "linter.worker", "service_worker", "content", "inject", "content/network-monitor"].includes(
-          chunk.name || ""
-        );
+        return ![
+          "editor.worker",
+          "ts.worker",
+          "linter.worker",
+          "service_worker",
+          "content",
+          "inject",
+          "content/network-monitor",
+        ].includes(chunk.name || "");
       },
       minSize: 307200,
       maxSize: 4194304,

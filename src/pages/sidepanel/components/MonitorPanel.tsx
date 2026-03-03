@@ -315,10 +315,7 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
               </div>
             ) : (
               filteredNetworkRequests.map((request) => (
-                <div
-                  key={request.id}
-                  className={`monitor-list-item ${request.selected ? "selected" : ""}`}
-                >
+                <div key={request.id} className={`monitor-list-item ${request.selected ? "selected" : ""}`}>
                   <div className="monitor-item-row">
                     <Checkbox
                       checked={request.selected}
@@ -388,10 +385,7 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
               </div>
             ) : (
               filteredConsoleLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className={`monitor-list-item ${log.selected ? "selected" : ""}`}
-                >
+                <div key={log.id} className={`monitor-list-item ${log.selected ? "selected" : ""}`}>
                   <div className="monitor-item-row">
                     <Checkbox
                       checked={log.selected}

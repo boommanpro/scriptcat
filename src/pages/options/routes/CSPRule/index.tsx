@@ -144,9 +144,7 @@ const CSPRuleManage: React.FC = () => {
       dataIndex: "action",
       width: 100,
       render: (action: CSPRuleAction) => (
-        <Tag color={action === "remove" ? "red" : "blue"}>
-          {action === "remove" ? "移除CSP" : "修改CSP"}
-        </Tag>
+        <Tag color={action === "remove" ? "red" : "blue"}>{action === "remove" ? "移除CSP" : "修改CSP"}</Tag>
       ),
     },
     {
@@ -187,12 +185,7 @@ const CSPRuleManage: React.FC = () => {
           <Button type="text" size="small" icon={<IconEdit />} onClick={() => handleEdit(record)}>
             编辑
           </Button>
-          <Popconfirm
-            title="确定删除此规则吗？"
-            onOk={() => handleDelete(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
+          <Popconfirm title="确定删除此规则吗？" onOk={() => handleDelete(record.id)} okText="确定" cancelText="取消">
             <Button type="text" size="small" status="danger" icon={<IconDelete />}>
               删除
             </Button>
@@ -275,10 +268,7 @@ const CSPRuleManage: React.FC = () => {
                   field="actionValue"
                   rules={[{ required: true, message: "请输入CSP值" }]}
                 >
-                  <Input.TextArea
-                    placeholder="例如: script-src 'self' 'unsafe-inline' *; connect-src *"
-                    rows={3}
-                  />
+                  <Input.TextArea placeholder="例如: script-src 'self' 'unsafe-inline' *; connect-src *" rows={3} />
                 </FormItem>
               )
             }

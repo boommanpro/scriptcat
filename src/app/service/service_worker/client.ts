@@ -503,7 +503,11 @@ export class AutomationScriptClient extends Client {
     return this.doThrow("getActiveTabs");
   }
 
-  executeScript(scriptKey: string, input: any, tabId?: number): Promise<{ success: boolean; result?: any; error?: string }> {
+  executeScript(
+    scriptKey: string,
+    input: any,
+    tabId?: number
+  ): Promise<{ success: boolean; result?: any; error?: string }> {
     return this.doThrow("executeScript", scriptKey, input, tabId);
   }
 }

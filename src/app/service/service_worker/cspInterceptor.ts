@@ -1,6 +1,6 @@
 import type { IMessageQueue } from "@Packages/message/message_queue";
 import { CSPRuleDAO, type CSPRule } from "@App/app/repo/cspRule";
-import Logger from "@App/app/logger/logger";
+import type Logger from "@App/app/logger/logger";
 import LoggerCore from "@App/app/logger/core";
 
 export class CSPInterceptorService {
@@ -35,7 +35,9 @@ export class CSPInterceptorService {
     );
   }
 
-  private handleHeadersReceived(details: chrome.webRequest.OnHeadersReceivedDetails): chrome.webRequest.BlockingResponse | undefined {
+  private handleHeadersReceived(
+    details: chrome.webRequest.OnHeadersReceivedDetails
+  ): chrome.webRequest.BlockingResponse | undefined {
     if (!this.enabledRules.length) {
       return undefined;
     }
@@ -51,9 +53,7 @@ export class CSPInterceptorService {
     let modified = false;
 
     for (const rule of matchingRules) {
-      const cspHeaderIndex = responseHeaders.findIndex(
-        (h) => h.name.toLowerCase() === "content-security-policy"
-      );
+      const cspHeaderIndex = responseHeaders.findIndex((h) => h.name.toLowerCase() === "content-security-policy");
 
       if (rule.action === "remove") {
         if (cspHeaderIndex !== -1) {
@@ -103,10 +103,7 @@ export class CSPInterceptorService {
     }
 
     if (pattern.startsWith("*://")) {
-      const regexPattern = pattern
-        .replace(/\./g, "\\.")
-        .replace(/\*/g, ".*")
-        .replace(/\?/g, ".");
+      const regexPattern = pattern.replace(/\./g, "\\.").replace(/\*/g, ".*").replace(/\?/g, ".");
       try {
         const regex = new RegExp(`^${regexPattern}$`, "i");
         return regex.test(url);
@@ -117,10 +114,7 @@ export class CSPInterceptorService {
     }
 
     if (pattern.includes("*")) {
-      const regexPattern = pattern
-        .replace(/\./g, "\\.")
-        .replace(/\*/g, ".*")
-        .replace(/\?/g, ".");
+      const regexPattern = pattern.replace(/\./g, "\\.").replace(/\*/g, ".*").replace(/\?/g, ".");
       try {
         const regex = new RegExp(regexPattern, "i");
         return regex.test(hostname) || regex.test(url);
@@ -134,7 +128,10 @@ export class CSPInterceptorService {
   }
 
   private modifyCSP(originalCSP: string, additionalDirectives: string): string {
-    const directives = additionalDirectives.split(";").map((d) => d.trim()).filter((d) => d);
+    const directives = additionalDirectives
+      .split(";")
+      .map((d) => d.trim())
+      .filter((d) => d);
 
     let csp = originalCSP;
 

@@ -66,20 +66,22 @@ async function setupOffscreenDocument() {
 async function registerNetworkMonitorScript() {
   try {
     // 先注销已存在的脚本
-    await chrome.scripting.unregisterContentScripts({ ids: ['network-monitor'] }).catch(() => {});
-    
+    await chrome.scripting.unregisterContentScripts({ ids: ["network-monitor"] }).catch(() => {});
+
     // 注册新的 content script
-    await chrome.scripting.registerContentScripts([{
-      id: 'network-monitor',
-      matches: ['<all_urls>'],
-      js: ['src/network-monitor-inject.js'],
-      runAt: 'document_start', // 最早时机
-      world: 'MAIN', // 在页面主世界中运行，直接劫持 fetch/XHR
-      allFrames: true,
-    }]);
-    console.log('[Network Monitor] Content script registered with highest priority');
+    await chrome.scripting.registerContentScripts([
+      {
+        id: "network-monitor",
+        matches: ["<all_urls>"],
+        js: ["src/network-monitor-inject.js"],
+        runAt: "document_start", // 最早时机
+        world: "MAIN", // 在页面主世界中运行，直接劫持 fetch/XHR
+        allFrames: true,
+      },
+    ]);
+    console.log("[Network Monitor] Content script registered with highest priority");
   } catch (error) {
-    console.error('[Network Monitor] Failed to register content script:', error);
+    console.error("[Network Monitor] Failed to register content script:", error);
   }
 }
 
@@ -853,7 +855,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
   if (req.type === "NETWORK_REQUEST" && sender.tab?.id) {
     console.log("[SW] Received NETWORK_REQUEST from tab", sender.tab.id, ":", req.data);
     console.log("[SW] Sender info:", { tabId: sender.tab?.id, url: sender.tab?.url, frameId: sender.frameId });
-    
+
     // 尝试发送到 SidePanel
     const messageToSend = {
       type: "NETWORK_REQUEST",
@@ -861,7 +863,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
       sourceTabId: sender.tab.id,
     };
     console.log("[SW] Broadcasting message:", messageToSend);
-    
+
     chrome.runtime
       .sendMessage(messageToSend)
       .then(() => console.log("[SW] Message broadcasted successfully"))
