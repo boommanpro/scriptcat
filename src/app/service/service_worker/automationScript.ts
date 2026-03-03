@@ -10,6 +10,13 @@ import Logger from "@App/app/logger/logger";
 import LoggerCore from "@App/app/logger/core";
 import { v4 as uuidv4 } from "uuid";
 
+export interface ExecuteResult {
+  success: boolean;
+  result?: any;
+  error?: string;
+  errorType?: string;
+}
+
 export class AutomationScriptService {
   private logger: Logger;
   private scriptDAO: AutomationScriptDAO;
@@ -106,8 +113,13 @@ export class AutomationScriptService {
     return this.testLogDAO.deleteLog(id);
   }
 
-  async runTest(params: { scriptKey: string; inputJson: string }): Promise<AutomationTestLog> {
-    const { scriptKey, inputJson } = params;
+  async getActiveTabs(): Promise<chrome.tabs.Tab[]> {
+    const tabs = await chrome.tabs.query({ active: false });
+    return tabs.filter(tab => tab.url && !tab.url.startsWith('chrome://'));
+  }
+
+  async runTest(params: { scriptKey: string; inputJson: string; tabId?: number }): Promise<AutomationTestLog> {
+    const { scriptKey, inputJson, tabId } = params;
     const script = await this.getByKey(scriptKey);
     if (!script) {
       throw new Error("Script not found");
@@ -128,12 +140,32 @@ export class AutomationScriptService {
         throw new Error("Invalid input JSON");
       }
 
-      const result = await this.executeScript(script, inputData);
+      let targetTabId = tabId;
+      
+      if (!targetTabId) {
+        if (script.targetUrl) {
+          const tab = await chrome.tabs.create({ url: script.targetUrl, active: false });
+          targetTabId = tab.id;
+          await this.waitForTabComplete(targetTabId!);
+        } else {
+          const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (!activeTab || !activeTab.id) {
+            throw new Error("No active tab found");
+          }
+          targetTabId = activeTab.id;
+        }
+      }
+
+      const result = await this.executeScriptInTab(targetTabId!, script.script, inputData);
       const duration = Date.now() - startTime;
+
+      if (!result.success) {
+        throw new Error(result.error || "Script execution failed");
+      }
 
       const updatedLog = await this.testLogDAO.update(log.id, {
         status: "success",
-        outputJson: JSON.stringify(result, null, 2),
+        outputJson: JSON.stringify(result.result, null, 2),
         duration,
       });
 
@@ -152,23 +184,83 @@ export class AutomationScriptService {
     }
   }
 
-  private async executeScript(script: AutomationScript, input: any): Promise<any> {
+  private waitForTabComplete(tabId: number, timeout: number = 30000): Promise<void> {
     return new Promise((resolve, reject) => {
-      try {
-        const wrappedScript = `
-          (async function(input) {
-            ${script.script}
-          })(arguments[0]).then(arguments[1]).catch(arguments[2]);
-        `;
-        const func = new Function("input", "resolve", "reject", wrappedScript);
-        func(input, resolve, reject);
-      } catch (e: any) {
-        reject(e);
-      }
+      const timer = setTimeout(() => {
+        chrome.tabs.onUpdated.removeListener(listener);
+        reject(new Error("Tab load timeout"));
+      }, timeout);
+
+      const listener = (updatedTabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+        if (updatedTabId === tabId && changeInfo.status === "complete") {
+          clearTimeout(timer);
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      };
+
+      chrome.tabs.onUpdated.addListener(listener);
     });
   }
 
-  async openTargetPage(scriptKey: string): Promise<void> {
+  private async executeScriptInTab(tabId: number, scriptCode: string, input: any): Promise<ExecuteResult> {
+    try {
+      const wrappedCode = `
+        return (async function(input) {
+          ${scriptCode}
+        })(${JSON.stringify(input)});
+      `;
+
+      const result = await chrome.scripting.executeScript({
+        target: { tabId },
+        world: "MAIN",
+        func: (codeToExecute: string) => {
+          try {
+            const fn = new Function(codeToExecute);
+            const result = fn();
+            if (result instanceof Promise) {
+              return result.then((r: any) => ({ success: true, result: r }));
+            }
+            return { success: true, result };
+          } catch (error: any) {
+            return { success: false, error: String(error), errorType: error.constructor.name };
+          }
+        },
+        args: [wrappedCode],
+      });
+
+      return result[0]?.result || { success: false, error: "No result returned" };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async executeScript(scriptKey: string, input: any, tabId?: number): Promise<ExecuteResult> {
+    const script = await this.getByKey(scriptKey);
+    if (!script) {
+      throw new Error("Script not found");
+    }
+
+    let targetTabId = tabId;
+    
+    if (!targetTabId) {
+      if (script.targetUrl) {
+        const tab = await chrome.tabs.create({ url: script.targetUrl, active: false });
+        targetTabId = tab.id;
+        await this.waitForTabComplete(targetTabId!);
+      } else {
+        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!activeTab || !activeTab.id) {
+          throw new Error("No active tab found");
+        }
+        targetTabId = activeTab.id;
+      }
+    }
+
+    return this.executeScriptInTab(targetTabId!, script.script, input);
+  }
+
+  async openTargetPage(scriptKey: string): Promise<number> {
     const script = await this.getByKey(scriptKey);
     if (!script) {
       throw new Error("Script not found");
@@ -176,7 +268,8 @@ export class AutomationScriptService {
     if (!script.targetUrl) {
       throw new Error("Script has no target URL");
     }
-    await chrome.tabs.create({ url: script.targetUrl });
+    const tab = await chrome.tabs.create({ url: script.targetUrl });
+    return tab.id!;
   }
 
   init() {
@@ -193,5 +286,7 @@ export class AutomationScriptService {
     this.group.on("deleteTestLog", this.deleteTestLog.bind(this));
     this.group.on("runTest", this.runTest.bind(this));
     this.group.on("openTargetPage", this.openTargetPage.bind(this));
+    this.group.on("getActiveTabs", this.getActiveTabs.bind(this));
+    this.group.on("executeScript", this.executeScript.bind(this));
   }
 }

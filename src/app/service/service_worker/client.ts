@@ -491,11 +491,19 @@ export class AutomationScriptClient extends Client {
     return this.do("deleteTestLog", id);
   }
 
-  runTest(scriptKey: string, inputJson: string): Promise<AutomationTestLog> {
-    return this.doThrow("runTest", { scriptKey, inputJson });
+  runTest(scriptKey: string, inputJson: string, tabId?: number): Promise<AutomationTestLog> {
+    return this.doThrow("runTest", { scriptKey, inputJson, tabId });
   }
 
-  openTargetPage(scriptKey: string): Promise<void> {
-    return this.do("openTargetPage", scriptKey);
+  openTargetPage(scriptKey: string): Promise<number> {
+    return this.doThrow("openTargetPage", scriptKey);
+  }
+
+  getActiveTabs(): Promise<chrome.tabs.Tab[]> {
+    return this.doThrow("getActiveTabs");
+  }
+
+  executeScript(scriptKey: string, input: any, tabId?: number): Promise<{ success: boolean; result?: any; error?: string }> {
+    return this.doThrow("executeScript", scriptKey, input, tabId);
   }
 }

@@ -10,10 +10,11 @@ import {
   Space,
   Typography,
   Tag,
-  Collapse,
   Table,
+  Select,
+  Tooltip,
 } from "@arco-design/web-react";
-import { IconSave, IconLeft, IconPlayArrow } from "@arco-design/web-react/icon";
+import { IconSave, IconLeft, IconPlayArrow, IconRefresh } from "@arco-design/web-react/icon";
 import type { AutomationScript, AutomationTestLog } from "@App/app/repo/automationScript";
 import { formatUnixTime } from "@App/pkg/utils/day_format";
 import { AutomationScriptClient } from "@App/app/service/service_worker/client";
@@ -25,7 +26,7 @@ import "@App/pages/options/routes/script/index.css";
 
 const FormItem = Form.Item;
 const { Title, Text } = Typography;
-const CollapseItem = Collapse.Item;
+const Option = Select.Option;
 
 const ScriptEditorComponent: React.FC<{
   id: string;
@@ -82,6 +83,8 @@ const AutomationScriptEditor: React.FC = () => {
   const [testInput, setTestInput] = useState("{}");
   const [testRunning, setTestRunning] = useState(false);
   const [testLogs, setTestLogs] = useState<AutomationTestLog[]>([]);
+  const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
+  const [selectedTabId, setSelectedTabId] = useState<number | undefined>();
 
   const automationClient = new AutomationScriptClient(message);
   const scriptId = params.id;
@@ -106,7 +109,18 @@ const AutomationScriptEditor: React.FC = () => {
         script: defaultCode,
       });
     }
+    
+    loadTabs();
   }, [scriptId]);
+
+  const loadTabs = async () => {
+    try {
+      const tabList = await automationClient.getActiveTabs();
+      setTabs(tabList);
+    } catch (e) {
+      console.error("Failed to load tabs:", e);
+    }
+  };
 
   const loadScript = async (id: string) => {
     setLoading(true);
@@ -171,6 +185,21 @@ const AutomationScriptEditor: React.FC = () => {
     navigate("/automation-script");
   };
 
+  const handleOpenTargetPage = async () => {
+    if (!editingScript) {
+      Message.warning("请先保存脚本");
+      return;
+    }
+    try {
+      const tabId = await automationClient.openTargetPage(editingScript.key);
+      Message.success("已打开目标页面");
+      loadTabs();
+      setSelectedTabId(tabId);
+    } catch (e: any) {
+      Message.error(`打开页面失败: ${e.message}`);
+    }
+  };
+
   const handleRunTest = async () => {
     if (!editingScript) {
       Message.warning("请先保存脚本后再进行测试");
@@ -179,7 +208,7 @@ const AutomationScriptEditor: React.FC = () => {
 
     setTestRunning(true);
     try {
-      const log = await automationClient.runTest(editingScript.key, testInput);
+      const log = await automationClient.runTest(editingScript.key, testInput, selectedTabId);
       setTestLogs([log, ...testLogs]);
       if (log.status === "success") {
         Message.success("测试成功");
@@ -295,6 +324,31 @@ const AutomationScriptEditor: React.FC = () => {
         <Card className="w-80 flex-shrink-0 m-2 ml-0 flex flex-col overflow-hidden" title="测试" bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '8px' }}>
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="mb-2">
+              <div className="flex justify-between items-center mb-1">
+                <Text bold>目标标签页</Text>
+                <Button size="mini" icon={<IconRefresh />} onClick={loadTabs}>
+                  刷新
+                </Button>
+              </div>
+              <Select
+                placeholder="选择标签页或使用目标网址"
+                value={selectedTabId}
+                onChange={(val) => setSelectedTabId(val)}
+                style={{ width: '100%' }}
+                size="small"
+                allowClear
+              >
+                {tabs.map(tab => (
+                  <Option key={tab.id} value={tab.id!}>
+                    <Tooltip content={tab.url}>
+                      <span className="text-xs truncate block">{tab.title || tab.url}</span>
+                    </Tooltip>
+                  </Option>
+                ))}
+              </Select>
+            </div>
+
+            <div className="mb-2">
               <Text bold className="block mb-1">输入参数 (JSON)</Text>
               <Input.TextArea
                 value={testInput}
@@ -304,18 +358,30 @@ const AutomationScriptEditor: React.FC = () => {
                 style={{ fontSize: 12 }}
               />
             </div>
-            <Button 
-              type="primary" 
-              icon={<IconPlayArrow />} 
-              onClick={handleRunTest} 
-              loading={testRunning}
-              disabled={!editingScript}
-              long
-            >
-              {editingScript ? "执行测试" : "请先保存脚本"}
-            </Button>
             
-            <div className="mt-4 flex-1 overflow-hidden flex flex-col">
+            <Space className="mb-2">
+              <Button 
+                type="primary" 
+                icon={<IconPlayArrow />} 
+                onClick={handleRunTest} 
+                loading={testRunning}
+                disabled={!editingScript}
+                size="small"
+              >
+                {editingScript ? "执行测试" : "请先保存"}
+              </Button>
+              {editingScript?.targetUrl && (
+                <Button 
+                  icon={<IconPlayArrow />} 
+                  onClick={handleOpenTargetPage}
+                  size="small"
+                >
+                  打开目标页
+                </Button>
+              )}
+            </Space>
+            
+            <div className="mt-2 flex-1 overflow-hidden flex flex-col">
               <Text bold className="block mb-2">测试历史</Text>
               <div className="flex-1 overflow-auto">
                 <Table
