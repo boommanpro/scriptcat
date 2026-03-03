@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Button,
@@ -34,6 +34,12 @@ const ScriptEditorComponent: React.FC<{
   onChange: (code: string) => void;
 }> = ({ id, code, onChange }) => {
   const [node, setNode] = useState<{ editor: editor.IStandaloneCodeEditor }>();
+  const onChangeRef = useRef(onChange);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
   const ref = useCallback<(node: { editor: editor.IStandaloneCodeEditor }) => void>(
     (inlineNode) => {
       if (inlineNode && inlineNode.editor && !node) {
@@ -47,13 +53,16 @@ const ScriptEditorComponent: React.FC<{
     if (!node || !node.editor) {
       return;
     }
-    node.editor.onKeyUp(() => {
-      onChange(node.editor.getValue() || "");
+    const editorInstance = node.editor;
+    const handler = editorInstance.onKeyUp(() => {
+      const currentValue = editorInstance.getValue() || "";
+      onChangeRef.current(currentValue);
     });
     return () => {
-      node.editor.dispose();
+      handler.dispose();
+      editorInstance.dispose();
     };
-  }, [node?.editor, onChange]);
+  }, [node?.editor]);
 
   return (
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
