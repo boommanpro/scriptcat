@@ -1,0 +1,338 @@
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  Button,
+  Card,
+  Form,
+  Input,
+  Switch,
+  Message,
+  Space,
+  Typography,
+  Tag,
+  Collapse,
+  Table,
+} from "@arco-design/web-react";
+import { IconSave, IconLeft, IconPlayArrow } from "@arco-design/web-react/icon";
+import type { AutomationScript, AutomationTestLog } from "@App/app/repo/automationScript";
+import { formatUnixTime } from "@App/pkg/utils/day_format";
+import { AutomationScriptClient } from "@App/app/service/service_worker/client";
+import { message } from "@App/pages/store/global";
+import CodeEditor from "@App/pages/components/CodeEditor";
+import { v4 as uuidv4 } from "uuid";
+import type { editor } from "monaco-editor";
+import "@App/pages/options/routes/script/index.css";
+
+const FormItem = Form.Item;
+const { Title, Text } = Typography;
+const CollapseItem = Collapse.Item;
+
+const ScriptEditorComponent: React.FC<{
+  id: string;
+  code: string;
+  onChange: (code: string) => void;
+}> = ({ id, code, onChange }) => {
+  const [node, setNode] = useState<{ editor: editor.IStandaloneCodeEditor }>();
+  const ref = useCallback<(node: { editor: editor.IStandaloneCodeEditor }) => void>(
+    (inlineNode) => {
+      if (inlineNode && inlineNode.editor && !node) {
+        setNode(inlineNode);
+      }
+    },
+    [node]
+  );
+
+  useEffect(() => {
+    if (!node || !node.editor) {
+      return;
+    }
+    node.editor.onKeyUp(() => {
+      onChange(node.editor.getValue() || "");
+    });
+    return () => {
+      node.editor.dispose();
+    };
+  }, [node?.editor, onChange]);
+
+  return (
+    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+      <CodeEditor 
+        key={id} 
+        id={id} 
+        ref={ref} 
+        code={code} 
+        diffCode="" 
+        editable 
+        className="script-code-editor"
+      />
+    </div>
+  );
+};
+
+const AutomationScriptEditor: React.FC = () => {
+  const navigate = useNavigate();
+  const params = useParams();
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [scriptCode, setScriptCode] = useState("");
+  const [editorId, setEditorId] = useState("");
+  const [editingScript, setEditingScript] = useState<AutomationScript | null>(null);
+  
+  const [testInput, setTestInput] = useState("{}");
+  const [testRunning, setTestRunning] = useState(false);
+  const [testLogs, setTestLogs] = useState<AutomationTestLog[]>([]);
+
+  const automationClient = new AutomationScriptClient(message);
+  const scriptId = params.id;
+
+  useEffect(() => {
+    const newEditorId = `automation-editor-${uuidv4()}`;
+    setEditorId(newEditorId);
+
+    if (scriptId) {
+      loadScript(scriptId);
+    } else {
+      const defaultCode = `// 输入参数通过 input 变量获取
+// 使用 return 返回结果
+// 示例:
+// const { url, data } = input;
+// console.log('Processing:', url);
+// return { success: true, result: data };
+`;
+      setScriptCode(defaultCode);
+      form.setFieldsValue({
+        enabled: true,
+        script: defaultCode,
+      });
+    }
+  }, [scriptId]);
+
+  const loadScript = async (id: string) => {
+    setLoading(true);
+    try {
+      const scripts = await automationClient.getAllScripts();
+      const script = scripts.find(s => s.id === id);
+      if (script) {
+        setEditingScript(script);
+        form.setFieldsValue(script);
+        setScriptCode(script.script);
+        const newEditorId = `automation-editor-${uuidv4()}`;
+        setEditorId(newEditorId);
+        const logs = await automationClient.getTestLogs(script.key);
+        setTestLogs(logs);
+      } else {
+        Message.error("脚本不存在");
+        navigate("/automation-script");
+      }
+    } catch (e: any) {
+      Message.error(`加载脚本失败: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleScriptChange = (code: string) => {
+    setScriptCode(code);
+    form.setFieldValue("script", code);
+  };
+
+  const handleSave = async () => {
+    try {
+      const values = await form.validate();
+      
+      if (!values.script || values.script.trim() === "") {
+        Message.error("请输入执行脚本");
+        return;
+      }
+
+      setSaving(true);
+      if (editingScript) {
+        await automationClient.updateScript(editingScript.id, values);
+        Message.success("更新成功");
+      } else {
+        const result = await automationClient.createScript(values as any);
+        Message.success("创建成功");
+        navigate(`/automation-script/editor/${result.id}`);
+      }
+    } catch (e: any) {
+      if (e && e.errors) {
+        const errorMessages = Object.values(e.errors).flat().join(", ");
+        Message.error(`保存失败: ${errorMessages}`);
+      } else {
+        Message.error(`保存失败: ${e.message || e}`);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBack = () => {
+    navigate("/automation-script");
+  };
+
+  const handleRunTest = async () => {
+    if (!editingScript) {
+      Message.warning("请先保存脚本后再进行测试");
+      return;
+    }
+
+    setTestRunning(true);
+    try {
+      const log = await automationClient.runTest(editingScript.key, testInput);
+      setTestLogs([log, ...testLogs]);
+      if (log.status === "success") {
+        Message.success("测试成功");
+      } else {
+        Message.error(`测试失败: ${log.error}`);
+      }
+    } catch (e: any) {
+      Message.error(`测试失败: ${e.message}`);
+    } finally {
+      setTestRunning(false);
+    }
+  };
+
+  const handleRerunLog = (log: AutomationTestLog) => {
+    setTestInput(log.inputJson);
+  };
+
+  const logColumns = [
+    {
+      title: "状态",
+      dataIndex: "status",
+      width: 60,
+      render: (status: string) => (
+        <Tag color={status === "success" ? "green" : status === "error" ? "red" : "blue"} size="small">
+          {status === "success" ? "成功" : status === "error" ? "失败" : "运行"}
+        </Tag>
+      ),
+    },
+    {
+      title: "时间",
+      dataIndex: "createtime",
+      width: 80,
+      render: (time: number) => <span className="text-xs">{formatUnixTime(time / 1000)}</span>,
+    },
+    {
+      title: "耗时",
+      dataIndex: "duration",
+      width: 60,
+      render: (duration: number) => <span className="text-xs">{duration || "-"}ms</span>,
+    },
+    {
+      title: "操作",
+      width: 50,
+      render: (_: any, record: AutomationTestLog) => (
+        <Button type="text" size="mini" onClick={() => handleRerunLog(record)}>
+          重测
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200">
+        <Space>
+          <Button icon={<IconLeft />} onClick={handleBack}>
+            返回
+          </Button>
+          <Title heading={5} className="m-0">
+            {editingScript ? "编辑脚本" : "新建脚本"}
+          </Title>
+        </Space>
+        <Button type="primary" icon={<IconSave />} onClick={handleSave} loading={saving}>
+          保存
+        </Button>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden">
+        <Card className="w-72 flex-shrink-0 m-2 overflow-auto" title="基本信息">
+          <Form form={form} layout="vertical" disabled={loading} size="small">
+            <FormItem label="脚本名称" field="name" rules={[{ required: true, message: "请输入脚本名称" }]}>
+              <Input placeholder="请输入脚本名称" />
+            </FormItem>
+            <FormItem
+              label="标识Key"
+              field="key"
+              rules={[
+                { required: true, message: "请输入标识Key" },
+                { match: /^[a-zA-Z0-9_-]+$/, message: "只能包含字母、数字、下划线和连字符" },
+              ]}
+            >
+              <Input placeholder="唯一标识" disabled={!!editingScript} />
+            </FormItem>
+            <FormItem label="描述" field="description">
+              <Input.TextArea placeholder="请输入脚本描述" rows={2} />
+            </FormItem>
+            <FormItem label="目标网址" field="targetUrl">
+              <Input placeholder="目标页面URL，可选" />
+            </FormItem>
+            <FormItem label="启用" field="enabled" triggerPropName="checked">
+              <Switch defaultChecked />
+            </FormItem>
+          </Form>
+        </Card>
+
+        <Card 
+          className="flex-1 m-2 ml-0 flex flex-col overflow-hidden" 
+          title="执行脚本" 
+          style={{ display: 'flex', flexDirection: 'column' }}
+          bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0, minHeight: 0 }}
+        >
+          <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            {editorId && (
+              <ScriptEditorComponent
+                id={editorId}
+                code={scriptCode}
+                onChange={handleScriptChange}
+              />
+            )}
+          </div>
+        </Card>
+
+        <Card className="w-80 flex-shrink-0 m-2 ml-0 flex flex-col overflow-hidden" title="测试" bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '8px' }}>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="mb-2">
+              <Text bold className="block mb-1">输入参数 (JSON)</Text>
+              <Input.TextArea
+                value={testInput}
+                onChange={setTestInput}
+                placeholder='{"key": "value"}'
+                rows={4}
+                style={{ fontSize: 12 }}
+              />
+            </div>
+            <Button 
+              type="primary" 
+              icon={<IconPlayArrow />} 
+              onClick={handleRunTest} 
+              loading={testRunning}
+              disabled={!editingScript}
+              long
+            >
+              {editingScript ? "执行测试" : "请先保存脚本"}
+            </Button>
+            
+            <div className="mt-4 flex-1 overflow-hidden flex flex-col">
+              <Text bold className="block mb-2">测试历史</Text>
+              <div className="flex-1 overflow-auto">
+                <Table
+                  columns={logColumns}
+                  data={testLogs}
+                  rowKey="id"
+                  size="small"
+                  pagination={false}
+                  scroll={{ y: 300 }}
+                />
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default AutomationScriptEditor;

@@ -5,6 +5,9 @@ import Setting from "@App/pages/options/routes/Setting";
 import SubscribeList from "@App/pages/options/routes/SubscribeList";
 import Tools from "@App/pages/options/routes/Tools";
 import AIConversation from "@App/pages/options/routes/AIConversation/index";
+import CSPRuleManage from "@App/pages/options/routes/CSPRule/index";
+import AutomationScriptManage from "@App/pages/options/routes/AutomationScript/index";
+import AutomationScriptEditor from "@App/pages/options/routes/AutomationScript/Editor";
 import { Layout, Menu } from "@arco-design/web-react";
 import {
   IconCode,
@@ -18,6 +21,8 @@ import {
   IconSubscribe,
   IconTool,
   IconRobot,
+  IconLock,
+  IconThunderbolt,
 } from "@arco-design/web-react/icon";
 import React, { useRef, useState } from "react";
 import { HashRouter, Route, Routes } from "react-router-dom";
@@ -72,6 +77,16 @@ const Sider: React.FC = () => {
             <CustomLink to="/tools" className="menu-tools">
               <MenuItem key="/tools">
                 <IconTool /> {t("tools")}
+              </MenuItem>
+            </CustomLink>
+            <CustomLink to="/csp-rule" className="menu-csp-rule">
+              <MenuItem key="/csp-rule">
+                <IconLock /> CSP处理
+              </MenuItem>
+            </CustomLink>
+            <CustomLink to="/automation-script" className="menu-automation-script">
+              <MenuItem key="/automation-script">
+                <IconThunderbolt /> 自动化规则脚本
               </MenuItem>
             </CustomLink>
             <CustomLink to="/ai-conversation" className="menu-ai-conversation">
@@ -182,6 +197,12 @@ const Sider: React.FC = () => {
           <Route path="/subscribe" element={<SubscribeList />} />
           <Route path="/logger" element={<Logger />} />
           <Route path="/tools" element={<Tools />} />
+          <Route path="/csp-rule" element={<CSPRuleManage />} />
+          <Route path="/automation-script" element={<AutomationScriptManage />} />
+          <Route path="/automation-script/editor">
+            <Route path=":id" element={<AutomationScriptEditor />} />
+            <Route path="" element={<AutomationScriptEditor />} />
+          </Route>
           <Route path="/ai-conversation" element={<AIConversation />} />
           <Route path="/setting" element={<Setting />} />
         </Routes>

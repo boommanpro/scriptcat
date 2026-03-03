@@ -19,6 +19,9 @@ import { onTabRemoved, onUrlNavigated, setOnUserActionDomainChanged } from "./ur
 import { LocalStorageDAO } from "@App/app/repo/localStorage";
 import { onRegularUpdateCheckAlarm } from "./regular_updatecheck";
 import { cacheInstance } from "@App/app/cache";
+import { CSPRuleService } from "./cspRule";
+import { CSPInterceptorService } from "./cspInterceptor";
+import { AutomationScriptService } from "./automationScript";
 
 // service worker的管理器
 export default class ServiceWorkerManager {
@@ -90,6 +93,13 @@ export default class ServiceWorkerManager {
     subscribe.init();
     const system = new SystemService(systemConfig, this.api.group("system"), this.sender);
     system.init();
+
+    const cspRule = new CSPRuleService(this.api.group("cspRule"), this.mq);
+    cspRule.init();
+    const cspInterceptor = new CSPInterceptorService(this.mq);
+    cspInterceptor.init();
+    const automationScript = new AutomationScriptService(this.api.group("automationScript"), this.mq);
+    automationScript.init();
 
     const regularScriptUpdateCheck = async () => {
       const res = await onRegularUpdateCheckAlarm(systemConfig, script, subscribe);
