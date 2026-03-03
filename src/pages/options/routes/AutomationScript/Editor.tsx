@@ -153,12 +153,20 @@ const AutomationScriptEditor: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      const values = await form.validate();
+      await form.validate();
       
-      if (!values.script || values.script.trim() === "") {
+      const formValues = form.getFieldsValue();
+      const scriptValue = scriptCode || formValues.script || "";
+      
+      if (!scriptValue || scriptValue.trim() === "") {
         Message.error("请输入执行脚本");
         return;
       }
+
+      const values = {
+        ...formValues,
+        script: scriptValue,
+      };
 
       setSaving(true);
       if (editingScript) {
