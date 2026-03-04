@@ -49,17 +49,32 @@ export class CSPInterceptorService {
       return undefined;
     }
 
+    // Sort by priority (higher priority first)
+    matchingRules.sort((a, b) => b.priority - a.priority);
+
     const responseHeaders = details.responseHeaders ? [...details.responseHeaders] : [];
     let modified = false;
+
+    this.logger.info("csp rule matched", {
+      url: details.url,
+      hostname: url.hostname,
+      matchedRules: matchingRules.map((r) => ({ name: r.name, action: r.action, priority: r.priority })),
+    });
 
     for (const rule of matchingRules) {
       const cspHeaderIndex = responseHeaders.findIndex((h) => h.name.toLowerCase() === "content-security-policy");
 
       if (rule.action === "remove") {
         if (cspHeaderIndex !== -1) {
-          responseHeaders.splice(cspHeaderIndex, 1);
+          const removed = responseHeaders.splice(cspHeaderIndex, 1);
           modified = true;
-          this.logger.debug("removed csp header", { url: details.url, rule: rule.name });
+          this.logger.info("removed csp header", { 
+            url: details.url, 
+            rule: rule.name,
+            removedHeader: removed[0]
+          });
+        } else {
+          this.logger.debug("csp header not found, nothing to remove", { url: details.url, rule: rule.name });
         }
       } else if (rule.action === "modify" && rule.actionValue) {
         if (cspHeaderIndex !== -1) {
@@ -67,19 +82,28 @@ export class CSPInterceptorService {
           const modifiedCSP = this.modifyCSP(originalCSP, rule.actionValue);
           responseHeaders[cspHeaderIndex].value = modifiedCSP;
           modified = true;
-          this.logger.debug("modified csp header", { url: details.url, rule: rule.name });
+          this.logger.info("modified csp header", { 
+            url: details.url, 
+            rule: rule.name,
+            originalCSP,
+            modifiedCSP 
+          });
         } else {
           responseHeaders.push({
             name: "Content-Security-Policy",
             value: rule.actionValue,
           });
           modified = true;
-          this.logger.debug("added csp header", { url: details.url, rule: rule.name });
+          this.logger.info("added csp header", { url: details.url, rule: rule.name, cspValue: rule.actionValue });
         }
       }
     }
 
     if (modified) {
+      this.logger.info("response headers modified", { 
+        url: details.url,
+        finalHeaders: responseHeaders.filter(h => h.name.toLowerCase().includes('security'))
+      });
       return { responseHeaders };
     }
     return undefined;
@@ -92,39 +116,58 @@ export class CSPInterceptorService {
 
     const pattern = rule.path;
 
+    // Regex pattern (wrapped in /)
     if (pattern.startsWith("/") && pattern.endsWith("/")) {
       try {
         const regex = new RegExp(pattern.slice(1, -1), "i");
-        return regex.test(url);
+        const matches = regex.test(url);
+        this.logger.debug("regex pattern match", { pattern, url, matches });
+        return matches;
       } catch (e) {
         this.logger.error("invalid regex pattern", { pattern, error: String(e) });
         return false;
       }
     }
 
+    // Wildcard pattern starting with *://
     if (pattern.startsWith("*://")) {
-      const regexPattern = pattern.replace(/\./g, "\\.").replace(/\*/g, ".*").replace(/\?/g, ".");
+      const regexPattern = pattern
+        .replace(/\./g, "\\.")
+        .replace(/\*/g, ".*")
+        .replace(/\?/g, ".");
       try {
         const regex = new RegExp(`^${regexPattern}$`, "i");
-        return regex.test(url);
+        const matches = regex.test(url);
+        this.logger.debug("wildcard *:// pattern match", { pattern, url, matches });
+        return matches;
       } catch (e) {
         this.logger.error("invalid wildcard pattern", { pattern, error: String(e) });
         return false;
       }
     }
 
+    // General wildcard pattern
     if (pattern.includes("*")) {
-      const regexPattern = pattern.replace(/\./g, "\\.").replace(/\*/g, ".*").replace(/\?/g, ".");
+      const regexPattern = pattern
+        .replace(/\./g, "\\.")
+        .replace(/\*/g, ".*")
+        .replace(/\?/g, ".");
       try {
-        const regex = new RegExp(regexPattern, "i");
-        return regex.test(hostname) || regex.test(url);
+        const regex = new RegExp(`^${regexPattern}$`, "i");
+        const matches = regex.test(url) || regex.test(hostname);
+        this.logger.debug("general wildcard pattern match", { pattern, url, hostname, matches });
+        return matches;
       } catch (e) {
         this.logger.error("invalid pattern", { pattern, error: String(e) });
         return false;
       }
     }
 
-    return hostname === pattern || url.includes(pattern);
+    // Exact match or substring match
+    const exactMatch = hostname === pattern || url === pattern;
+    const substringMatch = url.includes(pattern);
+    this.logger.debug("exact/substring pattern match", { pattern, url, hostname, exactMatch, substringMatch });
+    return exactMatch || substringMatch;
   }
 
   private modifyCSP(originalCSP: string, additionalDirectives: string): string {

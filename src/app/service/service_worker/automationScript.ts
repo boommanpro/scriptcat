@@ -19,9 +19,9 @@ export interface ExecuteResult {
 }
 
 export interface PostMessageConfig {
-  messageType?: string;
   timeout?: number;
   waitForMessage?: boolean;
+  testTaskId?: string;
 }
 
 export class AutomationScriptService {
@@ -102,6 +102,10 @@ export class AutomationScriptService {
     return this.testLogDAO.getLogsByScriptKey(params.scriptKey, params.limit || 50);
   }
 
+  async getTestLogByTaskId(testTaskId: string): Promise<AutomationTestLog | undefined> {
+    return this.testLogDAO.getLogByTestTaskId(testTaskId);
+  }
+
   async createTestLog(log: Omit<AutomationTestLog, "id" | "createtime">): Promise<AutomationTestLog> {
     const newLog: AutomationTestLog = {
       ...log,
@@ -130,10 +134,9 @@ export class AutomationScriptService {
     scriptKey: string;
     inputJson: string;
     tabId?: number;
-    postMessageConfig?: PostMessageConfig;
     scriptContent?: string;
   }): Promise<AutomationTestLog> {
-    const { scriptKey, inputJson, tabId, postMessageConfig, scriptContent } = params;
+    const { scriptKey, inputJson, tabId, scriptContent } = params;
     const script = await this.getByKey(scriptKey);
     if (!script) {
       throw new Error("Script not found");
@@ -141,8 +144,10 @@ export class AutomationScriptService {
 
     const actualScriptContent = scriptContent || script.script;
     const startTime = Date.now();
+    const testTaskId = uuidv4();
     const log = await this.createTestLog({
       scriptKey,
+      testTaskId,
       inputJson,
       status: "running",
       scriptContent: actualScriptContent,
@@ -155,6 +160,8 @@ export class AutomationScriptService {
       } catch {
         throw new Error("Invalid input JSON");
       }
+
+      inputData.testTaskId = testTaskId;
 
       let targetTabId = tabId;
 
@@ -172,7 +179,13 @@ export class AutomationScriptService {
         }
       }
 
-      const result = await this.executeScriptInTab(targetTabId!, actualScriptContent, inputData, postMessageConfig);
+      const config: PostMessageConfig = {
+        waitForMessage: script.waitForResponse || false,
+        timeout: script.responseTimeout || 30000,
+        testTaskId,
+      };
+
+      const result = await this.executeScriptInTab(targetTabId!, actualScriptContent, inputData, config);
       const duration = Date.now() - startTime;
 
       if (!result.success) {
@@ -185,7 +198,7 @@ export class AutomationScriptService {
         duration,
       });
 
-      this.logger.info("automation test success", { scriptKey, duration });
+      this.logger.info("automation test success", { scriptKey, duration, testTaskId });
       return updatedLog || log;
     } catch (e: any) {
       const duration = Date.now() - startTime;
@@ -195,7 +208,7 @@ export class AutomationScriptService {
         duration,
       });
 
-      this.logger.error("automation test error", { scriptKey, error: e.message });
+      this.logger.error("automation test error", { scriptKey, error: e.message, testTaskId });
       return updatedLog || log;
     }
   }
@@ -227,9 +240,9 @@ export class AutomationScriptService {
   ): Promise<ExecuteResult> {
     try {
       const config: PostMessageConfig = {
-        messageType: postMessageConfig?.messageType || "*",
         timeout: postMessageConfig?.timeout || 30000,
         waitForMessage: postMessageConfig?.waitForMessage || false,
+        testTaskId: postMessageConfig?.testTaskId,
       };
 
       const wrappedCode = `
@@ -247,15 +260,22 @@ export class AutomationScriptService {
               return new Promise((resolve) => {
                 const timeout = setTimeout(() => {
                   window.removeEventListener("message", messageHandler);
+                  const errorMsg = pmConfig.testTaskId
+                    ? `PostMessage timeout (testTaskId: ${pmConfig.testTaskId})`
+                    : "PostMessage timeout";
                   resolve({
                     success: false,
-                    error: "PostMessage timeout",
+                    error: errorMsg,
                     errorType: "TimeoutError",
                   });
                 }, pmConfig.timeout);
 
                 const messageHandler = (event: MessageEvent) => {
-                  if (pmConfig.messageType !== "*" && event.data?.type !== pmConfig.messageType) {
+                  if (!event.data || typeof event.data !== "object") {
+                    return;
+                  }
+
+                  if (pmConfig.testTaskId && event.data.testTaskId !== pmConfig.testTaskId) {
                     return;
                   }
 
@@ -310,13 +330,18 @@ export class AutomationScriptService {
   async executeScript(
     scriptKey: string,
     input: any,
-    tabId?: number,
-    postMessageConfig?: PostMessageConfig
+    tabId?: number
   ): Promise<ExecuteResult> {
     const script = await this.getByKey(scriptKey);
     if (!script) {
       throw new Error("Script not found");
     }
+
+    const testTaskId = uuidv4();
+    const inputWithTaskId = {
+      ...input,
+      testTaskId,
+    };
 
     let targetTabId = tabId;
 
@@ -334,7 +359,13 @@ export class AutomationScriptService {
       }
     }
 
-    return this.executeScriptInTab(targetTabId!, script.script, input, postMessageConfig);
+    const config: PostMessageConfig = {
+      waitForMessage: script.waitForResponse || false,
+      timeout: script.responseTimeout || 30000,
+      testTaskId,
+    };
+
+    return this.executeScriptInTab(targetTabId!, script.script, inputWithTaskId, config);
   }
 
   async openTargetPage(scriptKey: string): Promise<number> {
@@ -358,6 +389,7 @@ export class AutomationScriptService {
     this.group.on("deleteScript", this.deleteScript.bind(this));
     this.group.on("toggleScript", this.toggleScript.bind(this));
     this.group.on("getTestLogs", this.getTestLogs.bind(this));
+    this.group.on("getTestLogByTaskId", this.getTestLogByTaskId.bind(this));
     this.group.on("createTestLog", this.createTestLog.bind(this));
     this.group.on("updateTestLog", this.updateTestLog.bind(this));
     this.group.on("deleteTestLog", this.deleteTestLog.bind(this));

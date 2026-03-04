@@ -19,7 +19,6 @@ import { IconSave, IconLeft, IconPlayArrow, IconRefresh } from "@arco-design/web
 import type { AutomationScript, AutomationTestLog } from "@App/app/repo/automationScript";
 import { formatUnixTime } from "@App/pkg/utils/day_format";
 import { AutomationScriptClient } from "@App/app/service/service_worker/client";
-import type { PostMessageConfig } from "@App/app/service/service_worker/automationScript";
 import { message } from "@App/pages/store/global";
 import CodeEditor from "@App/pages/components/CodeEditor";
 import { v4 as uuidv4 } from "uuid";
@@ -88,10 +87,6 @@ const AutomationScriptEditor: React.FC = () => {
   const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
   const [selectedTabId, setSelectedTabId] = useState<number | undefined>();
 
-  const [waitForPostMessage, setWaitForPostMessage] = useState(false);
-  const [messageType, setMessageType] = useState("");
-  const [messageTimeout, setMessageTimeout] = useState(30000);
-
   const automationClient = new AutomationScriptClient(message);
   const scriptId = params.id;
 
@@ -103,15 +98,23 @@ const AutomationScriptEditor: React.FC = () => {
       loadScript(scriptId);
     } else {
       const defaultCode = `// 输入参数通过 input 变量获取
+// input.testTaskId 为当前测试任务ID，用于匹配 postMessage 响应
 // 使用 return 返回结果
-// 示例:
-// const { url, data } = input;
-// console.log('Processing:', url);
+//
+// 如果需要等待页面 postMessage 响应：
+// 1. 在脚本设置中开启"等待返回值"
+// 2. 页面需要通过 postMessage 返回结果，并包含 testTaskId
+//
+// 示例：
+// const { url, data, testTaskId } = input;
+// console.log('Processing:', url, 'TaskId:', testTaskId);
 // return { success: true, result: data };
 `;
       setScriptCode(defaultCode);
       form.setFieldsValue({
         enabled: true,
+        waitForResponse: false,
+        responseTimeout: 30000,
         script: defaultCode,
       });
     }
@@ -135,7 +138,11 @@ const AutomationScriptEditor: React.FC = () => {
       const script = scripts.find((s) => s.id === id);
       if (script) {
         setEditingScript(script);
-        form.setFieldsValue(script);
+        form.setFieldsValue({
+          ...script,
+          waitForResponse: script.waitForResponse ?? false,
+          responseTimeout: script.responseTimeout ?? 30000,
+        });
         setScriptCode(script.script);
         const newEditorId = `automation-editor-${uuidv4()}`;
         setEditorId(newEditorId);
@@ -172,6 +179,8 @@ const AutomationScriptEditor: React.FC = () => {
       const values = {
         ...formValues,
         script: scriptValue,
+        waitForResponse: formValues.waitForResponse ?? false,
+        responseTimeout: formValues.responseTimeout ?? 30000,
       };
 
       setSaving(true);
@@ -227,19 +236,10 @@ const AutomationScriptEditor: React.FC = () => {
 
     setTestRunning(true);
     try {
-      const postMessageConfig: PostMessageConfig | undefined = waitForPostMessage
-        ? {
-            waitForMessage: true,
-            messageType: messageType || "*",
-            timeout: messageTimeout,
-          }
-        : undefined;
-
       const log = await automationClient.runTest(
         editingScript.key,
         testInput,
         selectedTabId,
-        postMessageConfig,
         scriptCode
       );
       setTestLogs([log, ...testLogs]);
@@ -274,6 +274,19 @@ const AutomationScriptEditor: React.FC = () => {
           {status === "success" ? "成功" : status === "error" ? "失败" : "运行"}
         </Tag>
       ),
+    },
+    {
+      title: "任务ID",
+      dataIndex: "testTaskId",
+      width: 100,
+      render: (testTaskId: string) =>
+        testTaskId ? (
+          <Tooltip content={testTaskId}>
+            <span className="text-xs font-mono">{testTaskId.slice(0, 8)}...</span>
+          </Tooltip>
+        ) : (
+          "-"
+        ),
     },
     {
       title: "时间",
@@ -336,8 +349,28 @@ const AutomationScriptEditor: React.FC = () => {
             <FormItem label="目标网址" field="targetUrl">
               <Input placeholder="目标页面URL，可选" />
             </FormItem>
+            <FormItem
+              label="等待返回值"
+              field="waitForResponse"
+              triggerPropName="checked"
+              extra="开启后，脚本执行将等待页面通过 postMessage 返回结果"
+            >
+              <Switch />
+            </FormItem>
+            <FormItem
+              label="超时时间 (ms)"
+              field="responseTimeout"
+              extra="等待 postMessage 响应的最大时间"
+            >
+              <InputNumber
+                min={1000}
+                max={120000}
+                step={1000}
+                style={{ width: "100%" }}
+              />
+            </FormItem>
             <FormItem label="启用" field="enabled" triggerPropName="checked">
-              <Switch defaultChecked />
+              <Switch />
             </FormItem>
           </Form>
         </Card>
@@ -402,37 +435,6 @@ const AutomationScriptEditor: React.FC = () => {
                 rows={4}
                 style={{ fontSize: 12 }}
               />
-            </div>
-
-            <div className="mb-2">
-              <div className="flex items-center justify-between mb-1">
-                <Text bold>等待 PostMessage 响应</Text>
-                <Switch size="small" checked={waitForPostMessage} onChange={setWaitForPostMessage} />
-              </div>
-              {waitForPostMessage && (
-                <div className="mt-2 space-y-2">
-                  <div>
-                    <Text className="block mb-1 text-xs">消息类型 (可选)</Text>
-                    <Input
-                      placeholder="例如: SCRIPTCAT_RESPONSE"
-                      value={messageType}
-                      onChange={setMessageType}
-                      size="small"
-                    />
-                  </div>
-                  <div>
-                    <Text className="block mb-1 text-xs">超时时间 (ms)</Text>
-                    <InputNumber
-                      min={1000}
-                      max={120000}
-                      value={messageTimeout}
-                      onChange={(val) => setMessageTimeout(val || 30000)}
-                      size="small"
-                      style={{ width: "100%" }}
-                    />
-                  </div>
-                </div>
-              )}
             </div>
 
             <Space className="mb-2">

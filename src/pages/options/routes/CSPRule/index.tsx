@@ -168,13 +168,13 @@ const CSPRuleManage: React.FC = () => {
       title: "创建时间",
       dataIndex: "createtime",
       width: 150,
-      render: (time) => formatUnixTime(time / 1000),
+      render: (time) => formatUnixTime(time),
     },
     {
       title: "更新时间",
       dataIndex: "updatetime",
       width: 150,
-      render: (time) => formatUnixTime(time / 1000),
+      render: (time) => formatUnixTime(time),
     },
     {
       title: "操作",

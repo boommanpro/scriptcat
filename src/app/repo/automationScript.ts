@@ -3,6 +3,7 @@ import { Repo } from "./repo";
 export interface AutomationTestLog {
   id: string;
   scriptKey: string;
+  testTaskId?: string;
   inputJson: string;
   outputJson?: string;
   status: "success" | "error" | "running";
@@ -20,6 +21,8 @@ export interface AutomationScript {
   targetUrl: string;
   script: string;
   enabled: boolean;
+  waitForResponse: boolean;
+  responseTimeout: number;
   createtime: number;
   updatetime: number;
 }
@@ -64,6 +67,10 @@ export class AutomationTestLogDAO extends Repo<AutomationTestLog> {
   async getLogsByScriptKey(scriptKey: string, limit: number = 50): Promise<AutomationTestLog[]> {
     const logs = await this.find((_, value) => value.scriptKey === scriptKey);
     return logs.sort((a, b) => b.createtime - a.createtime).slice(0, limit);
+  }
+
+  async getLogByTestTaskId(testTaskId: string): Promise<AutomationTestLog | undefined> {
+    return this.findOne((_, value) => value.testTaskId === testTaskId);
   }
 
   async saveLog(log: AutomationTestLog): Promise<AutomationTestLog> {

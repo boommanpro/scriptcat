@@ -480,6 +480,10 @@ export class AutomationScriptClient extends Client {
     return this.doThrow("getTestLogs", { scriptKey, limit });
   }
 
+  getTestLogByTaskId(testTaskId: string): Promise<AutomationTestLog | undefined> {
+    return this.doThrow("getTestLogByTaskId", testTaskId);
+  }
+
   createTestLog(log: Omit<AutomationTestLog, "id" | "createtime">): Promise<AutomationTestLog> {
     return this.doThrow("createTestLog", log);
   }
@@ -496,10 +500,9 @@ export class AutomationScriptClient extends Client {
     scriptKey: string,
     inputJson: string,
     tabId?: number,
-    postMessageConfig?: PostMessageConfig,
     scriptContent?: string
   ): Promise<AutomationTestLog> {
-    return this.doThrow("runTest", { scriptKey, inputJson, tabId, postMessageConfig, scriptContent });
+    return this.doThrow("runTest", { scriptKey, inputJson, tabId, scriptContent });
   }
 
   openTargetPage(scriptKey: string): Promise<number> {
@@ -513,9 +516,8 @@ export class AutomationScriptClient extends Client {
   executeScript(
     scriptKey: string,
     input: any,
-    tabId?: number,
-    postMessageConfig?: PostMessageConfig
+    tabId?: number
   ): Promise<{ success: boolean; result?: any; error?: string }> {
-    return this.doThrow("executeScript", scriptKey, input, tabId, postMessageConfig);
+    return this.doThrow("executeScript", { scriptKey, input, tabId });
   }
 }
