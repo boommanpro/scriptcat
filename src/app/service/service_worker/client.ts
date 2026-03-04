@@ -496,9 +496,10 @@ export class AutomationScriptClient extends Client {
     scriptKey: string,
     inputJson: string,
     tabId?: number,
-    postMessageConfig?: PostMessageConfig
+    postMessageConfig?: PostMessageConfig,
+    scriptContent?: string
   ): Promise<AutomationTestLog> {
-    return this.doThrow("runTest", { scriptKey, inputJson, tabId, postMessageConfig });
+    return this.doThrow("runTest", { scriptKey, inputJson, tabId, postMessageConfig, scriptContent });
   }
 
   openTargetPage(scriptKey: string): Promise<number> {

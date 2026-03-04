@@ -220,6 +220,11 @@ const AutomationScriptEditor: React.FC = () => {
       return;
     }
 
+    if (!scriptCode || scriptCode.trim() === "") {
+      Message.warning("请输入脚本代码");
+      return;
+    }
+
     setTestRunning(true);
     try {
       const postMessageConfig: PostMessageConfig | undefined = waitForPostMessage
@@ -230,7 +235,13 @@ const AutomationScriptEditor: React.FC = () => {
           }
         : undefined;
 
-      const log = await automationClient.runTest(editingScript.key, testInput, selectedTabId, postMessageConfig);
+      const log = await automationClient.runTest(
+        editingScript.key,
+        testInput,
+        selectedTabId,
+        postMessageConfig,
+        scriptCode
+      );
       setTestLogs([log, ...testLogs]);
       if (log.status === "success") {
         Message.success("测试成功");
@@ -246,6 +257,11 @@ const AutomationScriptEditor: React.FC = () => {
 
   const handleRerunLog = (log: AutomationTestLog) => {
     setTestInput(log.inputJson);
+    if (log.scriptContent) {
+      setScriptCode(log.scriptContent);
+      const newEditorId = `automation-editor-${uuidv4()}`;
+      setEditorId(newEditorId);
+    }
   };
 
   const logColumns = [
@@ -436,6 +452,12 @@ const AutomationScriptEditor: React.FC = () => {
                 </Button>
               )}
             </Space>
+
+            {editingScript && scriptCode !== editingScript.script && (
+              <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">
+                当前测试将使用编辑框中的未保存内容
+              </div>
+            )}
 
             <div className="mt-2 flex-1 overflow-hidden flex flex-col">
               <Text bold className="block mb-2">

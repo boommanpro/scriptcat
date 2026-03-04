@@ -131,18 +131,21 @@ export class AutomationScriptService {
     inputJson: string;
     tabId?: number;
     postMessageConfig?: PostMessageConfig;
+    scriptContent?: string;
   }): Promise<AutomationTestLog> {
-    const { scriptKey, inputJson, tabId, postMessageConfig } = params;
+    const { scriptKey, inputJson, tabId, postMessageConfig, scriptContent } = params;
     const script = await this.getByKey(scriptKey);
     if (!script) {
       throw new Error("Script not found");
     }
 
+    const actualScriptContent = scriptContent || script.script;
     const startTime = Date.now();
     const log = await this.createTestLog({
       scriptKey,
       inputJson,
       status: "running",
+      scriptContent: actualScriptContent,
     });
 
     try {
@@ -169,7 +172,7 @@ export class AutomationScriptService {
         }
       }
 
-      const result = await this.executeScriptInTab(targetTabId!, script.script, inputData, postMessageConfig);
+      const result = await this.executeScriptInTab(targetTabId!, actualScriptContent, inputData, postMessageConfig);
       const duration = Date.now() - startTime;
 
       if (!result.success) {

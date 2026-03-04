@@ -9,6 +9,7 @@ export interface AutomationTestLog {
   error?: string;
   createtime: number;
   duration?: number;
+  scriptContent?: string;
 }
 
 export interface AutomationScript {
