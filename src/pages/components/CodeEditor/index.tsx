@@ -8,19 +8,20 @@ fnPlaceHolder.setEditorTheme = (theme: string) => editor.setTheme(theme);
 
 type Props = {
   className?: string;
-  diffCode?: string; // 因为代码加载是异步的,diifCode有3种状态:undefined不确定,""没有diff,有diff,不确定的情况下,编辑器不会加载
+  diffCode?: string;
   editable?: boolean;
   id: string;
   code?: string;
+  eslintConfig?: string;
 };
 
 const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.IStandaloneCodeEditor | undefined }, Props> = (
-  { id, className, code, diffCode, editable },
+  { id, className, code, diffCode, editable, eslintConfig: customEslintConfig },
   ref
 ) => {
   const [monacoEditor, setEditor] = useState<editor.IStandaloneCodeEditor>();
   const [enableEslint, setEnableEslint] = useState(false);
-  const [eslintConfig, setEslintConfig] = useState("");
+  const [systemEslintConfig, setSystemEslintConfig] = useState("");
 
   const div = useRef<HTMLDivElement>(null);
   useImperativeHandle(ref, () => ({
@@ -31,7 +32,7 @@ const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.IStandaloneCod
     const loadConfigs = () => {
       Promise.all([systemConfig.getEslintConfig(), systemConfig.getEnableEslint()]).then(
         ([eslintConfig, enableEslint]) => {
-          setEslintConfig(eslintConfig);
+          setSystemEslintConfig(eslintConfig);
           setEnableEslint(enableEslint);
         }
       );
@@ -111,10 +112,11 @@ const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.IStandaloneCod
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         timer = null;
+        const configToUse = customEslintConfig || systemEslintConfig;
         LinterWorker.sendLinterMessage({
           code: model.getValue(),
           id,
-          config: JSON.parse(eslintConfig),
+          config: JSON.parse(configToUse),
         });
       }, 500);
     };
@@ -228,7 +230,7 @@ const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.IStandaloneCod
     return () => {
       LinterWorker.hook.removeListener("message", handler);
     };
-  }, [id, monacoEditor, enableEslint, eslintConfig]);
+  }, [id, monacoEditor, enableEslint, systemEslintConfig, customEslintConfig]);
 
   return <div id={id} className={className} ref={div} />;
 };

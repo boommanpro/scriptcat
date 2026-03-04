@@ -25,6 +25,7 @@ import CodeEditor from "@App/pages/components/CodeEditor";
 import { v4 as uuidv4 } from "uuid";
 import type { editor } from "monaco-editor";
 import "@App/pages/options/routes/script/index.css";
+import { defaultConfig as automationEslintConfig } from "@Packages/eslint/automation-linter-config";
 
 const FormItem = Form.Item;
 const { Title, Text } = Typography;
@@ -68,7 +69,16 @@ const ScriptEditorComponent: React.FC<{
 
   return (
     <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-      <CodeEditor key={id} id={id} ref={ref} code={code} diffCode="" editable className="script-code-editor" />
+      <CodeEditor
+        key={id}
+        id={id}
+        ref={ref}
+        code={code}
+        diffCode=""
+        editable
+        className="script-code-editor"
+        eslintConfig={automationEslintConfig}
+      />
     </div>
   );
 };
