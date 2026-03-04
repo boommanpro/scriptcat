@@ -135,42 +135,76 @@ export class AutomationScriptService {
     inputJson: string;
     tabId?: number;
     scriptContent?: string;
+    waitForResponse?: boolean;
+    responseTimeout?: number;
   }): Promise<AutomationTestLog> {
-    const { scriptKey, inputJson, tabId, scriptContent } = params;
+    const { scriptKey, inputJson, tabId, scriptContent, waitForResponse, responseTimeout } = params;
     const script = await this.getByKey(scriptKey);
     if (!script) {
       throw new Error("Script not found");
     }
 
     const actualScriptContent = scriptContent || script.script;
+    const actualWaitForResponse = waitForResponse !== undefined ? waitForResponse : script.waitForResponse;
+    const actualResponseTimeout = responseTimeout !== undefined ? responseTimeout : script.responseTimeout;
+
     const startTime = Date.now();
     const testTaskId = uuidv4();
+
+    console.log("=== [AutomationScript] Test Execution Start ===");
+    console.log(`[${new Date().toISOString()}] Test execution initiated`);
+    console.log("Script Key:", scriptKey);
+    console.log("Test Task ID:", testTaskId);
+    console.log("Target Tab ID:", tabId || "(will be determined)");
+    console.log("--- Script Content ---");
+    console.log(actualScriptContent);
+    console.log("--- End Script Content ---");
+    console.log("--- Input Parameters ---");
+    console.log("Raw Input JSON:", inputJson);
+    console.log("--- End Input Parameters ---");
+    console.log("--- Configuration ---");
+    console.log("waitForResponse:", actualWaitForResponse);
+    console.log("responseTimeout:", actualResponseTimeout, "ms");
+    console.log("Target URL:", script.targetUrl || "(not set)");
+    console.log("--- End Configuration ---");
+
     const log = await this.createTestLog({
       scriptKey,
       testTaskId,
       inputJson,
       status: "running",
       scriptContent: actualScriptContent,
+      waitForResponse: actualWaitForResponse,
+      responseTimeout: actualResponseTimeout,
     });
+
+    console.log("Test log created with ID:", log.id);
 
     try {
       let inputData: any;
       try {
         inputData = JSON.parse(inputJson);
-      } catch {
+        console.log("Parsed input data:", JSON.stringify(inputData, null, 2));
+      } catch (parseError: any) {
+        console.error("Failed to parse input JSON:", parseError.message);
         throw new Error("Invalid input JSON");
       }
 
       inputData.testTaskId = testTaskId;
+      console.log("Input data with testTaskId:", JSON.stringify(inputData, null, 2));
 
       let targetTabId = tabId;
 
       if (!targetTabId) {
         if (script.targetUrl) {
+          console.log("Creating new tab with target URL:", script.targetUrl);
           const tab = await chrome.tabs.create({ url: script.targetUrl, active: false });
           targetTabId = tab.id;
+          console.log("Waiting for tab to complete loading, tabId:", targetTabId);
           await this.waitForTabComplete(targetTabId!);
+          console.log("Tab loaded successfully");
         } else {
+          console.log("Using active tab as target");
           const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
           if (!activeTab || !activeTab.id) {
             throw new Error("No active tab found");
@@ -179,14 +213,35 @@ export class AutomationScriptService {
         }
       }
 
+      console.log("Final target tab ID:", targetTabId);
+
       const config: PostMessageConfig = {
-        waitForMessage: script.waitForResponse || false,
-        timeout: script.responseTimeout || 30000,
+        waitForMessage: actualWaitForResponse || false,
+        timeout: actualResponseTimeout || 30000,
         testTaskId,
       };
 
+      console.log("--- Executing Script ---");
+      console.log("PostMessageConfig:", JSON.stringify(config, null, 2));
+      console.log("Execution world: MAIN");
+
       const result = await this.executeScriptInTab(targetTabId!, actualScriptContent, inputData, config);
       const duration = Date.now() - startTime;
+
+      console.log("--- Execution Result ---");
+      console.log("Duration:", duration, "ms");
+      console.log("Success:", result.success);
+      if (result.result) {
+        console.log("Result:", JSON.stringify(result.result, null, 2));
+      }
+      if (result.error) {
+        console.log("Error:", result.error);
+        console.log("Error Type:", result.errorType);
+      }
+      if (result.source) {
+        console.log("Message Source:", result.source);
+      }
+      console.log("--- End Execution Result ---");
 
       if (!result.success) {
         throw new Error(result.error || "Script execution failed");
@@ -198,10 +253,18 @@ export class AutomationScriptService {
         duration,
       });
 
+      console.log("=== [AutomationScript] Test Execution Success ===");
       this.logger.info("automation test success", { scriptKey, duration, testTaskId });
       return updatedLog || log;
     } catch (e: any) {
       const duration = Date.now() - startTime;
+      console.error("--- Test Execution Error ---");
+      console.error("Error Type:", e.constructor?.name || "Unknown");
+      console.error("Error Message:", e.message);
+      console.error("Error Stack:", e.stack);
+      console.error("Duration:", duration, "ms");
+      console.error("=== [AutomationScript] Test Execution Failed ===");
+
       const updatedLog = await this.testLogDAO.update(log.id, {
         status: "error",
         error: e.message || String(e),
@@ -220,7 +283,7 @@ export class AutomationScriptService {
         reject(new Error("Tab load timeout"));
       }, timeout);
 
-      const listener = (updatedTabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+      const listener = (updatedTabId: number, changeInfo: { status?: string }) => {
         if (updatedTabId === tabId && changeInfo.status === "complete") {
           clearTimeout(timer);
           chrome.tabs.onUpdated.removeListener(listener);
@@ -238,6 +301,10 @@ export class AutomationScriptService {
     input: any,
     postMessageConfig?: PostMessageConfig
   ): Promise<ExecuteResult> {
+    console.log("--- [executeScriptInTab] Starting ---");
+    console.log("Tab ID:", tabId);
+    console.log("Input:", JSON.stringify(input, null, 2));
+
     try {
       const config: PostMessageConfig = {
         timeout: postMessageConfig?.timeout || 30000,
@@ -245,24 +312,37 @@ export class AutomationScriptService {
         testTaskId: postMessageConfig?.testTaskId,
       };
 
+      console.log("PostMessage Config:", JSON.stringify(config, null, 2));
+      console.log("waitForMessage mode:", config.waitForMessage ? "ENABLED" : "DISABLED");
+
       const wrappedCode = `
         return (async function(input) {
           ${scriptCode}
         })(${JSON.stringify(input)});
       `;
 
+      console.log("Wrapped code prepared, length:", wrappedCode.length);
+      console.log("Executing script in MAIN world...");
+
       const result = await chrome.scripting.executeScript({
         target: { tabId },
         world: "MAIN",
         func: (codeToExecute: string, pmConfig: PostMessageConfig) => {
           try {
+            console.log("[Page Context] Script execution started");
+            console.log("[Page Context] waitForMessage:", pmConfig.waitForMessage);
+            console.log("[Page Context] testTaskId:", pmConfig.testTaskId);
+            console.log("[Page Context] timeout:", pmConfig.timeout);
+
             if (pmConfig.waitForMessage) {
+              console.log("[Page Context] Setting up postMessage listener...");
               return new Promise((resolve) => {
                 const timeout = setTimeout(() => {
                   window.removeEventListener("message", messageHandler);
                   const errorMsg = pmConfig.testTaskId
                     ? `PostMessage timeout (testTaskId: ${pmConfig.testTaskId})`
                     : "PostMessage timeout";
+                  console.error("[Page Context] PostMessage timeout!");
                   resolve({
                     success: false,
                     error: errorMsg,
@@ -271,16 +351,20 @@ export class AutomationScriptService {
                 }, pmConfig.timeout);
 
                 const messageHandler = (event: MessageEvent) => {
+                  console.log("[Page Context] Received message:", event.data);
                   if (!event.data || typeof event.data !== "object") {
+                    console.log("[Page Context] Ignoring non-object message");
                     return;
                   }
 
                   if (pmConfig.testTaskId && event.data.testTaskId !== pmConfig.testTaskId) {
+                    console.log("[Page Context] Ignoring message with different testTaskId");
                     return;
                   }
 
                   clearTimeout(timeout);
                   window.removeEventListener("message", messageHandler);
+                  console.log("[Page Context] PostMessage received, resolving with:", event.data);
 
                   resolve({
                     success: true,
@@ -293,23 +377,31 @@ export class AutomationScriptService {
 
                 try {
                   const fn = new Function(codeToExecute);
+                  console.log("[Page Context] Executing script function...");
                   const scriptResult = fn();
+                  console.log("[Page Context] Script function returned:", typeof scriptResult);
 
                   if (scriptResult instanceof Promise) {
+                    console.log("[Page Context] Script returned a Promise, waiting...");
                     scriptResult
                       .then((ret) => {
+                        console.log("[Page Context] Promise resolved with:", ret);
                         if (ret !== undefined && ret !== null) {
                           clearTimeout(timeout);
                           window.removeEventListener("message", messageHandler);
+                          console.log("[Page Context] Using Promise return value instead of waiting for postMessage");
                           resolve({
                             success: true,
                             result: ret,
                           });
+                        } else {
+                          console.log("[Page Context] Promise returned null/undefined, waiting for postMessage...");
                         }
                       })
                       .catch((err) => {
                         clearTimeout(timeout);
                         window.removeEventListener("message", messageHandler);
+                        console.error("[Page Context] Promise rejected:", err);
                         resolve({
                           success: false,
                           error: String(err),
@@ -319,14 +411,18 @@ export class AutomationScriptService {
                   } else if (scriptResult !== undefined && scriptResult !== null) {
                     clearTimeout(timeout);
                     window.removeEventListener("message", messageHandler);
+                    console.log("[Page Context] Script returned synchronously:", scriptResult);
                     resolve({
                       success: true,
                       result: scriptResult,
                     });
+                  } else {
+                    console.log("[Page Context] Script returned null/undefined, waiting for postMessage...");
                   }
                 } catch (err: any) {
                   clearTimeout(timeout);
                   window.removeEventListener("message", messageHandler);
+                  console.error("[Page Context] Script execution error:", err);
                   resolve({
                     success: false,
                     error: String(err),
@@ -336,30 +432,46 @@ export class AutomationScriptService {
               });
             }
 
+            console.log("[Page Context] Running in direct return mode (no postMessage waiting)");
             const fn = new Function(codeToExecute);
             const result = fn();
+            console.log("[Page Context] Direct execution result:", result);
             if (result instanceof Promise) {
-              return result.then((r: any) => ({ success: true, result: r }));
+              return result.then((r: any) => {
+                console.log("[Page Context] Promise resolved:", r);
+                return { success: true, result: r };
+              });
             }
             return { success: true, result };
           } catch (error: any) {
+            console.error("[Page Context] Execution error:", error);
             return { success: false, error: String(error), errorType: error.constructor.name };
           }
         },
         args: [wrappedCode, config],
       });
 
-      return result[0]?.result || { success: false, error: "No result returned" };
+      console.log("Script execution completed");
+      console.log("Raw result from chrome.scripting:", JSON.stringify(result, null, 2));
+
+      const rawResult = result[0]?.result;
+      let finalResult: ExecuteResult;
+      if (rawResult && typeof rawResult === "object" && "success" in rawResult) {
+        finalResult = rawResult as ExecuteResult;
+      } else {
+        finalResult = { success: false, error: "No result returned" };
+      }
+      console.log("Final result:", JSON.stringify(finalResult, null, 2));
+      console.log("--- [executeScriptInTab] End ---");
+
+      return finalResult;
     } catch (error: any) {
+      console.error("[executeScriptInTab] Chrome scripting error:", error);
       return { success: false, error: error.message };
     }
   }
 
-  async executeScript(
-    scriptKey: string,
-    input: any,
-    tabId?: number
-  ): Promise<ExecuteResult> {
+  async executeScript(scriptKey: string, input: any, tabId?: number): Promise<ExecuteResult> {
     const script = await this.getByKey(scriptKey);
     if (!script) {
       throw new Error("Script not found");

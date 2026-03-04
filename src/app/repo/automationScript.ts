@@ -11,6 +11,8 @@ export interface AutomationTestLog {
   createtime: number;
   duration?: number;
   scriptContent?: string;
+  waitForResponse?: boolean;
+  responseTimeout?: number;
 }
 
 export interface AutomationScript {

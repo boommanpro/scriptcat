@@ -14,7 +14,6 @@ import {
   Select,
   Tooltip,
   InputNumber,
-  Collapse,
 } from "@arco-design/web-react";
 import { IconSave, IconLeft, IconPlayArrow, IconRefresh, IconCopy } from "@arco-design/web-react/icon";
 import type { AutomationScript, AutomationTestLog } from "@App/app/repo/automationScript";
@@ -30,7 +29,6 @@ import { defaultConfig as automationEslintConfig } from "@Packages/eslint/automa
 const FormItem = Form.Item;
 const { Title, Text } = Typography;
 const Option = Select.Option;
-const CollapseItem = Collapse.Item;
 
 const ScriptEditorComponent: React.FC<{
   id: string;
@@ -92,7 +90,9 @@ const JsonViewer: React.FC<{ data: string; title: string }> = ({ data, title }) 
   } catch {
     return (
       <div className="text-xs">
-        <Text bold className="block mb-1">{title}</Text>
+        <Text bold className="block mb-1">
+          {title}
+        </Text>
         <pre className="bg-gray-50 p-2 rounded overflow-auto max-h-40 text-xs whitespace-pre-wrap break-all">
           {data}
         </pre>
@@ -102,7 +102,9 @@ const JsonViewer: React.FC<{ data: string; title: string }> = ({ data, title }) 
 
   return (
     <div className="text-xs">
-      <Text bold className="block mb-1">{title}</Text>
+      <Text bold className="block mb-1">
+        {title}
+      </Text>
       <pre className="bg-gray-50 p-2 rounded overflow-auto max-h-40 text-xs whitespace-pre-wrap break-all">
         {JSON.stringify(parsed, null, 2)}
       </pre>
@@ -230,11 +232,26 @@ return { success: true, received: input };
   };
 
   const handleSave = async () => {
+    console.log("=== [Editor] Save Script ===");
+    console.log(`[${new Date().toISOString()}] Saving script`);
+    console.log("Is Copy Mode:", isCopyMode);
+    console.log("Editing Script ID:", editingScript?.id);
+
     try {
       await form.validate();
 
       const formValues = form.getFieldsValue();
       const scriptValue = scriptCode || formValues.script || "";
+
+      console.log("--- Form Values ---");
+      console.log("Name:", formValues.name);
+      console.log("Key:", formValues.key);
+      console.log("waitForResponse:", formValues.waitForResponse);
+      console.log("responseTimeout:", formValues.responseTimeout);
+      console.log("enabled:", formValues.enabled);
+      console.log("--- Script Code Length ---");
+      console.log(scriptValue.length, "characters");
+      console.log("=== End Save Info ===");
 
       if (!scriptValue || scriptValue.trim() === "") {
         Message.error("请输入执行脚本");
@@ -249,12 +266,19 @@ return { success: true, received: input };
       };
 
       setSaving(true);
-      if (editingScript) {
-        await automationClient.updateScript(editingScript.id, values);
+      if (editingScript && !isCopyMode) {
+        const updated = await automationClient.updateScript(editingScript.id, values);
         Message.success("更新成功");
+        if (updated) {
+          setEditingScript(updated);
+          console.log("Script updated, editingScript state refreshed");
+        }
       } else {
         const result = await automationClient.createScript(values as any);
         Message.success("创建成功");
+        setEditingScript(result);
+        setIsCopyMode(false);
+        console.log("Script created, new ID:", result.id);
         navigate(`/automation-script/editor/${result.id}`);
       }
     } catch (e: any) {
@@ -299,13 +323,36 @@ return { success: true, received: input };
       return;
     }
 
+    const formValues = form.getFieldsValue();
+    const waitForResponse = formValues.waitForResponse ?? false;
+    const responseTimeout = formValues.responseTimeout ?? 30000;
+
+    console.log("=== [Editor] Test Execution Request ===");
+    console.log(`[${new Date().toISOString()}] Initiating test from editor`);
+    console.log("Script Key:", editingScript.key);
+    console.log("Script ID:", editingScript.id);
+    console.log("--- Form Values ---");
+    console.log("Name:", formValues.name);
+    console.log("Key:", formValues.key);
+    console.log("waitForResponse:", waitForResponse);
+    console.log("responseTimeout:", responseTimeout);
+    console.log("enabled:", formValues.enabled);
+    console.log("--- Script Code (first 500 chars) ---");
+    console.log(scriptCode.substring(0, 500));
+    console.log("--- Input JSON ---");
+    console.log(testInput);
+    console.log("Selected Tab ID:", selectedTabId);
+    console.log("=== End Test Request ===");
+
     setTestRunning(true);
     try {
       const log = await automationClient.runTest(
         editingScript.key,
         testInput,
         selectedTabId,
-        scriptCode
+        scriptCode,
+        waitForResponse,
+        responseTimeout
       );
       setTestLogs([log, ...testLogs]);
       if (log.status === "success") {
@@ -321,11 +368,35 @@ return { success: true, received: input };
   };
 
   const handleRerunLog = (log: AutomationTestLog) => {
+    console.log("=== [Editor] Rerun from History ===");
+    console.log(`[${new Date().toISOString()}] Rerunning test from log`);
+    console.log("Log ID:", log.id);
+    console.log("Test Task ID:", log.testTaskId);
+    console.log("Original Status:", log.status);
+    console.log("--- Original Input ---");
+    console.log(log.inputJson);
+    console.log("--- Original Script (first 500 chars) ---");
+    if (log.scriptContent) {
+      console.log(log.scriptContent.substring(0, 500));
+    } else {
+      console.log("(no script content saved)");
+    }
+    console.log("--- Original Configuration ---");
+    console.log("waitForResponse:", log.waitForResponse);
+    console.log("responseTimeout:", log.responseTimeout);
+    console.log("=== End Rerun Info ===");
+
     setTestInput(log.inputJson);
     if (log.scriptContent) {
       setScriptCode(log.scriptContent);
       const newEditorId = `automation-editor-${uuidv4()}`;
       setEditorId(newEditorId);
+    }
+    if (log.waitForResponse !== undefined) {
+      form.setFieldValue("waitForResponse", log.waitForResponse);
+    }
+    if (log.responseTimeout !== undefined) {
+      form.setFieldValue("responseTimeout", log.responseTimeout);
     }
   };
 
@@ -383,7 +454,9 @@ return { success: true, received: input };
         {record.outputJson && <JsonViewer data={record.outputJson} title="返回结果" />}
         {record.error && (
           <div className="text-xs">
-            <Text bold className="block mb-1 text-red-500">错误信息</Text>
+            <Text bold className="block mb-1 text-red-500">
+              错误信息
+            </Text>
             <pre className="bg-red-50 p-2 rounded overflow-auto max-h-40 text-xs text-red-600 whitespace-pre-wrap break-all">
               {record.error}
             </pre>
@@ -459,17 +532,8 @@ return { success: true, received: input };
             >
               <Switch />
             </FormItem>
-            <FormItem
-              label="超时时间 (ms)"
-              field="responseTimeout"
-              extra="等待 postMessage 响应的最大时间"
-            >
-              <InputNumber
-                min={1000}
-                max={120000}
-                step={1000}
-                style={{ width: "100%" }}
-              />
+            <FormItem label="超时时间 (ms)" field="responseTimeout" extra="等待 postMessage 响应的最大时间">
+              <InputNumber min={1000} max={120000} step={1000} style={{ width: "100%" }} />
             </FormItem>
             <FormItem label="启用" field="enabled" triggerPropName="checked">
               <Switch />

@@ -18,7 +18,6 @@ import { type ScriptInfo } from "@App/pkg/utils/scriptInstall";
 import type { ScriptService, TCheckScriptUpdateOption, TOpenBatchUpdatePageOption } from "./script";
 import type { CSPRule } from "@App/app/repo/cspRule";
 import type { AutomationScript, AutomationTestLog } from "@App/app/repo/automationScript";
-import type { PostMessageConfig } from "./automationScript";
 
 export class ServiceWorkerClient extends Client {
   constructor(msgSender: MessageSend) {
@@ -500,9 +499,11 @@ export class AutomationScriptClient extends Client {
     scriptKey: string,
     inputJson: string,
     tabId?: number,
-    scriptContent?: string
+    scriptContent?: string,
+    waitForResponse?: boolean,
+    responseTimeout?: number
   ): Promise<AutomationTestLog> {
-    return this.doThrow("runTest", { scriptKey, inputJson, tabId, scriptContent });
+    return this.doThrow("runTest", { scriptKey, inputJson, tabId, scriptContent, waitForResponse, responseTimeout });
   }
 
   openTargetPage(scriptKey: string): Promise<number> {
