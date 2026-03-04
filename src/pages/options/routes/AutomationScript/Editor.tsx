@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   Button,
   Card,
@@ -14,8 +14,9 @@ import {
   Select,
   Tooltip,
   InputNumber,
+  Collapse,
 } from "@arco-design/web-react";
-import { IconSave, IconLeft, IconPlayArrow, IconRefresh } from "@arco-design/web-react/icon";
+import { IconSave, IconLeft, IconPlayArrow, IconRefresh, IconCopy } from "@arco-design/web-react/icon";
 import type { AutomationScript, AutomationTestLog } from "@App/app/repo/automationScript";
 import { formatUnixTime } from "@App/pkg/utils/day_format";
 import { AutomationScriptClient } from "@App/app/service/service_worker/client";
@@ -28,6 +29,7 @@ import "@App/pages/options/routes/script/index.css";
 const FormItem = Form.Item;
 const { Title, Text } = Typography;
 const Option = Select.Option;
+const CollapseItem = Collapse.Item;
 
 const ScriptEditorComponent: React.FC<{
   id: string;
@@ -71,15 +73,44 @@ const ScriptEditorComponent: React.FC<{
   );
 };
 
+const JsonViewer: React.FC<{ data: string; title: string }> = ({ data, title }) => {
+  if (!data) return null;
+
+  let parsed: any;
+  try {
+    parsed = JSON.parse(data);
+  } catch {
+    return (
+      <div className="text-xs">
+        <Text bold className="block mb-1">{title}</Text>
+        <pre className="bg-gray-50 p-2 rounded overflow-auto max-h-40 text-xs whitespace-pre-wrap break-all">
+          {data}
+        </pre>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-xs">
+      <Text bold className="block mb-1">{title}</Text>
+      <pre className="bg-gray-50 p-2 rounded overflow-auto max-h-40 text-xs whitespace-pre-wrap break-all">
+        {JSON.stringify(parsed, null, 2)}
+      </pre>
+    </div>
+  );
+};
+
 const AutomationScriptEditor: React.FC = () => {
   const navigate = useNavigate();
   const params = useParams();
+  const location = useLocation();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [scriptCode, setScriptCode] = useState("");
   const [editorId, setEditorId] = useState("");
   const [editingScript, setEditingScript] = useState<AutomationScript | null>(null);
+  const [isCopyMode, setIsCopyMode] = useState(false);
 
   const [testInput, setTestInput] = useState("{}");
   const [testRunning, setTestRunning] = useState(false);
@@ -94,21 +125,45 @@ const AutomationScriptEditor: React.FC = () => {
     const newEditorId = `automation-editor-${uuidv4()}`;
     setEditorId(newEditorId);
 
-    if (scriptId) {
+    const locationState = location.state as { copyFrom?: AutomationScript } | null;
+    if (locationState?.copyFrom) {
+      const copyScript = locationState.copyFrom;
+      setIsCopyMode(true);
+      setEditingScript(null);
+      const newName = `${copyScript.name} (副本)`;
+      const newKey = `${copyScript.key}_copy_${Date.now()}`;
+      form.setFieldsValue({
+        ...copyScript,
+        name: newName,
+        key: newKey,
+        enabled: false,
+        waitForResponse: copyScript.waitForResponse ?? false,
+        responseTimeout: copyScript.responseTimeout ?? 30000,
+      });
+      setScriptCode(copyScript.script);
+      const newerEditorId = `automation-editor-${uuidv4()}`;
+      setEditorId(newerEditorId);
+      navigate(location.pathname, { replace: true, state: null });
+    } else if (scriptId) {
       loadScript(scriptId);
     } else {
       const defaultCode = `// 输入参数通过 input 变量获取
-// input.testTaskId 为当前测试任务ID，用于匹配 postMessage 响应
-// 使用 return 返回结果
-//
-// 如果需要等待页面 postMessage 响应：
-// 1. 在脚本设置中开启"等待返回值"
-// 2. 页面需要通过 postMessage 返回结果，并包含 testTaskId
-//
+// input.testTaskId 为当前测试任务ID
+
+// 方式1：直接 return 返回结果（推荐）
+// return { success: true, data: input };
+
+// 方式2：通过 postMessage 返回结果（用于异步场景）
+// 需要在脚本设置中开启"等待返回值"
+// window.postMessage({
+//   testTaskId: input.testTaskId,
+//   result: { success: true, data: input }
+// }, '*');
+// 注意：使用 postMessage 时不要 return 任何值
+
 // 示例：
-// const { url, data, testTaskId } = input;
-// console.log('Processing:', url, 'TaskId:', testTaskId);
-// return { success: true, result: data };
+console.log('Input:', input);
+return { success: true, received: input };
 `;
       setScriptCode(defaultCode);
       form.setFieldsValue({
@@ -311,6 +366,23 @@ const AutomationScriptEditor: React.FC = () => {
     },
   ];
 
+  const expandedRowRender = (record: AutomationTestLog) => {
+    return (
+      <div className="p-2 bg-gray-50 space-y-2">
+        <JsonViewer data={record.inputJson} title="输入参数" />
+        {record.outputJson && <JsonViewer data={record.outputJson} title="返回结果" />}
+        {record.error && (
+          <div className="text-xs">
+            <Text bold className="block mb-1 text-red-500">错误信息</Text>
+            <pre className="bg-red-50 p-2 rounded overflow-auto max-h-40 text-xs text-red-600 whitespace-pre-wrap break-all">
+              {record.error}
+            </pre>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200">
@@ -319,12 +391,32 @@ const AutomationScriptEditor: React.FC = () => {
             返回
           </Button>
           <Title heading={5} className="m-0">
-            {editingScript ? "编辑脚本" : "新建脚本"}
+            {isCopyMode ? "复制脚本" : editingScript ? "编辑脚本" : "新建脚本"}
           </Title>
         </Space>
-        <Button type="primary" icon={<IconSave />} onClick={handleSave} loading={saving}>
-          保存
-        </Button>
+        <Space>
+          {editingScript && !isCopyMode && (
+            <Button
+              icon={<IconCopy />}
+              onClick={() => {
+                setIsCopyMode(true);
+                const newName = `${editingScript.name} (副本)`;
+                const newKey = `${editingScript.key}_copy_${Date.now()}`;
+                form.setFieldsValue({
+                  name: newName,
+                  key: newKey,
+                  enabled: false,
+                });
+                setEditingScript(null);
+              }}
+            >
+              复制
+            </Button>
+          )}
+          <Button type="primary" icon={<IconSave />} onClick={handleSave} loading={saving}>
+            保存
+          </Button>
+        </Space>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
@@ -463,7 +555,7 @@ const AutomationScriptEditor: React.FC = () => {
 
             <div className="mt-2 flex-1 overflow-hidden flex flex-col">
               <Text bold className="block mb-2">
-                测试历史
+                测试历史（点击行展开查看详情）
               </Text>
               <div className="flex-1 overflow-auto">
                 <Table
@@ -473,6 +565,7 @@ const AutomationScriptEditor: React.FC = () => {
                   size="small"
                   pagination={false}
                   scroll={{ y: 300 }}
+                  expandedRowRender={expandedRowRender}
                 />
               </div>
             </div>

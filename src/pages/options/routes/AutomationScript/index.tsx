@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, Table, Message, Popconfirm, Typography, Switch } from "@arco-design/web-react";
-import { IconPlus, IconDelete } from "@arco-design/web-react/icon";
+import { Button, Card, Table, Message, Popconfirm, Typography, Switch, Space } from "@arco-design/web-react";
+import { IconPlus, IconDelete, IconCopy } from "@arco-design/web-react/icon";
 import type { ColumnProps } from "@arco-design/web-react/es/Table";
 import type { AutomationScript } from "@App/app/repo/automationScript";
 import { formatUnixTime } from "@App/pkg/utils/day_format";
@@ -58,6 +58,13 @@ const AutomationScriptManage: React.FC = () => {
     } catch (e: any) {
       Message.error(`操作失败: ${e.message}`);
     }
+  };
+
+  const handleCopy = (record: AutomationScript, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate("/automation-script/editor", {
+      state: { copyFrom: record },
+    });
   };
 
   const columns: ColumnProps<AutomationScript>[] = [
@@ -128,14 +135,24 @@ const AutomationScriptManage: React.FC = () => {
     },
     {
       title: "操作",
-      width: 100,
+      width: 140,
       fixed: "right",
       render: (_, record) => (
-        <Popconfirm title="确定删除此脚本吗？" onOk={() => handleDelete(record.id)} okText="确定" cancelText="取消">
-          <Button type="text" size="small" status="danger" icon={<IconDelete />} onClick={(e) => e.stopPropagation()}>
-            删除
+        <Space>
+          <Button
+            type="text"
+            size="small"
+            icon={<IconCopy />}
+            onClick={(e) => handleCopy(record, e)}
+          >
+            复制
           </Button>
-        </Popconfirm>
+          <Popconfirm title="确定删除此脚本吗？" onOk={() => handleDelete(record.id)} okText="确定" cancelText="取消">
+            <Button type="text" size="small" status="danger" icon={<IconDelete />} onClick={(e) => e.stopPropagation()}>
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];

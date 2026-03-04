@@ -291,18 +291,46 @@ export class AutomationScriptService {
 
                 window.addEventListener("message", messageHandler);
 
-                const fn = new Function(codeToExecute);
-                const scriptResult = fn();
+                try {
+                  const fn = new Function(codeToExecute);
+                  const scriptResult = fn();
 
-                if (scriptResult instanceof Promise) {
-                  scriptResult.catch((err) => {
+                  if (scriptResult instanceof Promise) {
+                    scriptResult
+                      .then((ret) => {
+                        if (ret !== undefined && ret !== null) {
+                          clearTimeout(timeout);
+                          window.removeEventListener("message", messageHandler);
+                          resolve({
+                            success: true,
+                            result: ret,
+                          });
+                        }
+                      })
+                      .catch((err) => {
+                        clearTimeout(timeout);
+                        window.removeEventListener("message", messageHandler);
+                        resolve({
+                          success: false,
+                          error: String(err),
+                          errorType: err?.constructor?.name || "Error",
+                        });
+                      });
+                  } else if (scriptResult !== undefined && scriptResult !== null) {
                     clearTimeout(timeout);
                     window.removeEventListener("message", messageHandler);
                     resolve({
-                      success: false,
-                      error: String(err),
-                      errorType: err.constructor.name,
+                      success: true,
+                      result: scriptResult,
                     });
+                  }
+                } catch (err: any) {
+                  clearTimeout(timeout);
+                  window.removeEventListener("message", messageHandler);
+                  resolve({
+                    success: false,
+                    error: String(err),
+                    errorType: err?.constructor?.name || "Error",
                   });
                 }
               });
