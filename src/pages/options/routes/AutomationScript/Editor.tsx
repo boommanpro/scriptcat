@@ -35,14 +35,14 @@ const ScriptEditorComponent: React.FC<{
   code: string;
   onChange: (code: string) => void;
 }> = ({ id, code, onChange }) => {
-  const [node, setNode] = useState<{ editor: editor.IStandaloneCodeEditor }>();
+  const [node, setNode] = useState<{ editor?: editor.IStandaloneCodeEditor }>();
   const onChangeRef = useRef(onChange);
 
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  const ref = useCallback<(node: { editor: editor.IStandaloneCodeEditor }) => void>(
+  const ref = useCallback<(node: { editor?: editor.IStandaloneCodeEditor } | null) => void>(
     (inlineNode) => {
       if (inlineNode && inlineNode.editor && !node) {
         setNode(inlineNode);
@@ -52,7 +52,7 @@ const ScriptEditorComponent: React.FC<{
   );
 
   useEffect(() => {
-    if (!node?.editor) {
+    if (!node || !node.editor) {
       return;
     }
     const editorInstance = node.editor;
@@ -62,9 +62,8 @@ const ScriptEditorComponent: React.FC<{
     });
     return () => {
       handler.dispose();
-      editorInstance.dispose();
     };
-  }, [node]);
+  }, [node?.editor]);
 
   return (
     <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
