@@ -553,6 +553,7 @@
   },
   "csp_rule": "CSP处理",
   "automation_script": "自动化规则脚本",
+  "cloud_control": "云控管理",
   "ai_settings": "AI设置",
   "automation_script_page": {
     "title": "自动化规则脚本",

@@ -22,6 +22,7 @@ import { cacheInstance } from "@App/app/cache";
 import { CSPRuleService } from "./cspRule";
 import { CSPInterceptorService } from "./cspInterceptor";
 import { AutomationScriptService } from "./automationScript";
+import { CloudControlBackgroundService } from "./cloudControl";
 
 // service worker的管理器
 export default class ServiceWorkerManager {
@@ -29,7 +30,7 @@ export default class ServiceWorkerManager {
     private api: Server,
     private mq: IMessageQueue,
     private sender: ServiceWorkerMessageSend
-  ) {}
+  ) { }
 
   logger(data: Logger) {
     // 发送日志消息
@@ -100,6 +101,8 @@ export default class ServiceWorkerManager {
     cspInterceptor.init();
     const automationScript = new AutomationScriptService(this.api.group("automationScript"), this.mq);
     automationScript.init();
+    const cloudControl = new CloudControlBackgroundService();
+    cloudControl.connect().catch((e) => console.error("Cloud control connection error:", e));
 
     const regularScriptUpdateCheck = async () => {
       const res = await onRegularUpdateCheckAlarm(systemConfig, script, subscribe);
