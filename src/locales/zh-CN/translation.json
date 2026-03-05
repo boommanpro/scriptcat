@@ -601,6 +601,8 @@
     "key_rule": "只能包含字母、数字、下划线和连字符",
     "unique_key": "唯一标识",
     "enter_description_optional": "请输入脚本描述",
+    "input_params_example": "示例输入参数",
+    "input_params_example_desc": "用于描述输入参数的示例，方便理解参数格式",
     "target_url_optional": "目标页面URL，可选",
     "wait_for_response": "等待返回值",
     "wait_for_response_desc": "开启后，脚本执行将等待页面通过 postMessage 返回结果",

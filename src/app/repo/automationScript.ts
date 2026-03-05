@@ -20,6 +20,7 @@ export interface AutomationScript {
   key: string;
   name: string;
   description: string;
+  inputParams: string;
   targetUrl: string;
   script: string;
   enabled: boolean;

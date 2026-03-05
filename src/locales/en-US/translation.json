@@ -601,6 +601,8 @@
     "key_rule": "Can only contain letters, numbers, underscores and hyphens",
     "unique_key": "Unique identifier",
     "enter_description_optional": "Please enter script description",
+    "input_params_example": "Input Params Example",
+    "input_params_example_desc": "Example input parameters to help understand parameter format",
     "target_url_optional": "Target page URL, optional",
     "wait_for_response": "Wait for Response",
     "wait_for_response_desc": "When enabled, script execution will wait for page to return result via postMessage",

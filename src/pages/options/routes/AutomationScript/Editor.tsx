@@ -191,6 +191,7 @@ return { success: true, received: input };
         waitForResponse: false,
         responseTimeout: 30000,
         script: defaultCode,
+        inputParams: "",
       });
     }
 
@@ -541,6 +542,13 @@ return { success: true, received: input };
             </FormItem>
             <FormItem label={t("description")} field="description">
               <Input.TextArea placeholder={t("automation_script_page.enter_description_optional")} rows={2} />
+            </FormItem>
+            <FormItem
+              label={t("automation_script_page.input_params_example")}
+              field="inputParams"
+              extra={t("automation_script_page.input_params_example_desc")}
+            >
+              <Input.TextArea placeholder='{"key": "value"}' rows={2} />
             </FormItem>
             <FormItem label={t("automation_script_page.target_url")} field="targetUrl">
               <Input placeholder={t("automation_script_page.target_url_optional")} />
