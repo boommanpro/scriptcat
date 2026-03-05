@@ -1,0 +1,31 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: scriptcat-cloud-server
+  
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+      write-dates-as-timestamps: false
+
+logging:
+  level:
+    root: INFO
+    org.scriptcat: DEBUG
+    org.springframework.web: INFO
+    org.springframework.web.socket: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+
+app:
+  websocket:
+    heartbeat-interval: 30000
+    connection-timeout: 90000
+  
+  execution:
+    timeout: 30000
+    max-concurrent: 100

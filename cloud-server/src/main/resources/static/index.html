@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScriptCat Cloud Server - Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            color: #555;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .log-area {
+            background-color: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 300px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+        }
+        
+        .log-entry.sent {
+            color: #00bfff;
+        }
+        
+        .log-entry.received {
+            color: #00ff00;
+        }
+        
+        .log-entry.error {
+            color: #ff0000;
+        }
+        
+        .log-entry.info {
+            color: #ffff00;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 ScriptCat Cloud Server - Test Page</h1>
+    
+    <div class="container">
+        <h2>📡 WebSocket Connection</h2>
+        <div id="connectionStatus" class="status disconnected">
+            Disconnected
+        </div>
+        
+        <div class="form-group">
+            <label for="serverUrl">Server URL:</label>
+            <input type="text" id="serverUrl" value="ws://localhost:8080/ws">
+        </div>
+        
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" value="test@example.com">
+        </div>
+        
+        <div class="form-group">
+            <label for="clientId">Client ID:</label>
+            <input type="text" id="clientId" value="client-test-123">
+        </div>
+        
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()" id="disconnectBtn" disabled>Disconnect</button>
+    </div>
+    
+    <div class="container">
+        <h2>📝 Send Message</h2>
+        
+        <div class="form-group">
+            <label for="messageType">Message Type:</label>
+            <select id="messageType">
+                <option value="AUTH">AUTH</option>
+                <option value="SCRIPT_LIST">SCRIPT_LIST</option>
+                <option value="HEARTBEAT">HEARTBEAT</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="messageData">Message Data (JSON):</label>
+            <textarea id="messageData" rows="5">{
+  "version": "1.0.0",
+  "platform": "chrome"
+}</textarea>
+        </div>
+        
+        <button onclick="sendMessage()" id="sendBtn" disabled>Send Message</button>
+    </div>
+    
+    <div class="container">
+        <h2>📋 Message Log</h2>
+        <div id="logArea" class="log-area"></div>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script>
+        let stompClient = null;
+        let connected = false;
+        
+        function log(message, type = 'info') {
+            const logArea = document.getElementById('logArea');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logArea.appendChild(entry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+        
+        function updateConnectionStatus(isConnected) {
+            connected = isConnected;
+            const statusDiv = document.getElementById('connectionStatus');
+            const connectBtn = document.querySelector('button[onclick="connect()"]');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const sendBtn = document.getElementById('sendBtn');
+            
+            if (isConnected) {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = 'Connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                sendBtn.disabled = false;
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = 'Disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                sendBtn.disabled = true;
+            }
+        }
+        
+        function connect() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const username = document.getElementById('username').value;
+            
+            log(`Connecting to ${serverUrl}...`, 'info');
+            
+            const socket = new WebSocket(serverUrl);
+            stompClient = Stomp.over(socket);
+            
+            const headers = {
+                username: username
+            };
+            
+            stompClient.connect(headers, function(frame) {
+                log('Connected successfully!', 'info');
+                updateConnectionStatus(true);
+                
+                // Subscribe to user-specific messages
+                stompClient.subscribe('/user/queue/auth', function(message) {
+                    log(`Received: ${message.body}`, 'received');
+                });
+                
+                stompClient.subscribe('/user/queue/script/sync', function(message) {
+                    log(`Received: ${message.body}`, 'received');
+                });
+                
+                stompClient.subscribe('/user/queue/execute', function(message) {
+                    log(`Received: ${message.body}`, 'received');
+                });
+                
+            }, function(error) {
+                log(`Connection error: ${error}`, 'error');
+                updateConnectionStatus(false);
+            });
+        }
+        
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+                log('Disconnected', 'info');
+            }
+            updateConnectionStatus(false);
+        }
+        
+        function sendMessage() {
+            const messageType = document.getElementById('messageType').value;
+            const messageData = document.getElementById('messageData').value;
+            const username = document.getElementById('username').value;
+            const clientId = document.getElementById('clientId').value;
+            
+            let destination = '/app/';
+            let action = '';
+            
+            switch(messageType) {
+                case 'AUTH':
+                    destination += 'auth';
+                    action = 'auth.login';
+                    break;
+                case 'SCRIPT_LIST':
+                    destination += 'script/sync';
+                    action = 'script.sync';
+                    break;
+                case 'HEARTBEAT':
+                    destination += 'heartbeat';
+                    action = 'ping';
+                    break;
+            }
+            
+            const message = {
+                id: 'msg-' + Date.now(),
+                type: messageType,
+                action: action,
+                timestamp: Date.now(),
+                username: username,
+                clientId: clientId,
+                data: JSON.parse(messageData)
+            };
+            
+            stompClient.send(destination, {}, JSON.stringify(message));
+            log(`Sent: ${JSON.stringify(message)}`, 'sent');
+        }
+        
+        function clearLog() {
+            document.getElementById('logArea').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
