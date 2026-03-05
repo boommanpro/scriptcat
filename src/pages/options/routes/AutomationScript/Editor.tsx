@@ -161,6 +161,9 @@ const AutomationScriptEditor: React.FC = () => {
         responseTimeout: copyScript.responseTimeout ?? 30000,
       });
       setScriptCode(copyScript.script);
+      if (copyScript.inputParams && copyScript.inputParams.trim()) {
+        setTestInput(copyScript.inputParams);
+      }
       const newerEditorId = `automation-editor-${uuidv4()}`;
       setEditorId(newerEditorId);
       navigate(location.pathname, { replace: true, state: null });
@@ -221,6 +224,9 @@ return { success: true, received: input };
           responseTimeout: script.responseTimeout ?? 30000,
         });
         setScriptCode(script.script);
+        if (script.inputParams && script.inputParams.trim()) {
+          setTestInput(script.inputParams);
+        }
         const newEditorId = `automation-editor-${uuidv4()}`;
         setEditorId(newEditorId);
         const logs = await automationClient.getTestLogs(script.key);
