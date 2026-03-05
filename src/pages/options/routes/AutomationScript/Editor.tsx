@@ -38,6 +38,7 @@ const ScriptEditorComponent: React.FC<{
 }> = ({ id, code, onChange }) => {
   const [node, setNode] = useState<{ editor?: editor.IStandaloneCodeEditor }>();
   const onChangeRef = useRef(onChange);
+  const isInitializedRef = useRef(false);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -57,10 +58,14 @@ const ScriptEditorComponent: React.FC<{
       return;
     }
     const editorInstance = node.editor;
-    const handler = editorInstance.onKeyUp(() => {
+
+    const handler = editorInstance.onDidChangeModelContent(() => {
       const currentValue = editorInstance.getValue() || "";
       onChangeRef.current(currentValue);
     });
+
+    isInitializedRef.current = true;
+
     return () => {
       handler.dispose();
     };
