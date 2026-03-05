@@ -42,6 +42,7 @@
     "clipboardWrite",
     "unlimitedStorage",
     "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
     "sidePanel"
   ],
   "side_panel": {
@@ -56,8 +57,12 @@
   ],
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["src/content/network-monitor.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/content/network-monitor.js"
+      ],
       "run_at": "document_start",
       "all_frames": true
     }

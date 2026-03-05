@@ -3,11 +3,15 @@ import { CSPRuleDAO, type CSPRule } from "@App/app/repo/cspRule";
 import type Logger from "@App/app/logger/logger";
 import LoggerCore from "@App/app/logger/core";
 
+const CSP_RULE_ID_START = 10000;
+const MAX_DYNAMIC_RULES = 5000;
+
 export class CSPInterceptorService {
   private logger: Logger;
   private cspRuleDAO: CSPRuleDAO;
   private enabledRules: CSPRule[] = [];
   private initialized: boolean = false;
+  private ruleIdCounter: number = CSP_RULE_ID_START;
 
   constructor(private mq: IMessageQueue) {
     this.logger = LoggerCore.logger().with({ service: "cspInterceptor" });
@@ -23,179 +27,225 @@ export class CSPInterceptorService {
     this.enabledRules = await this.cspRuleDAO.getEnabledRules();
     this.logger.info("csp interceptor initialized", { ruleCount: this.enabledRules.length });
 
-    this.mq.subscribe<CSPRule[]>("cspRulesChanged", (rules) => {
+    await this.updateDeclarativeRules();
+
+    this.mq.subscribe<CSPRule[]>("cspRulesChanged", async (rules) => {
       this.enabledRules = rules;
       this.logger.info("csp rules updated", { ruleCount: rules.length });
+      await this.updateDeclarativeRules();
     });
-
-    chrome.webRequest.onHeadersReceived.addListener(
-      this.handleHeadersReceived.bind(this),
-      { urls: ["<all_urls>"], types: ["main_frame", "sub_frame"] },
-      ["blocking", "responseHeaders"]
-    );
   }
 
-  private handleHeadersReceived(
-    details: chrome.webRequest.OnHeadersReceivedDetails
-  ): chrome.webRequest.BlockingResponse | undefined {
-    if (!this.enabledRules.length) {
-      return undefined;
-    }
+  private async updateDeclarativeRules() {
+    try {
+      const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
+      const existingRuleIds = existingRules
+        .filter((rule) => rule.id >= CSP_RULE_ID_START && rule.id < CSP_RULE_ID_START + MAX_DYNAMIC_RULES)
+        .map((rule) => rule.id);
 
-    const url = new URL(details.url);
-    const matchingRules = this.enabledRules.filter((rule) => this.matchRule(rule, url.href, url.hostname));
+      this.logger.info("existing csp rules to remove", { count: existingRuleIds.length });
 
-    if (!matchingRules.length) {
-      return undefined;
-    }
+      const newRules: chrome.declarativeNetRequest.Rule[] = [];
+      this.ruleIdCounter = CSP_RULE_ID_START;
 
-    // Sort by priority (higher priority first)
-    matchingRules.sort((a, b) => b.priority - a.priority);
+      const sortedRules = [...this.enabledRules].sort((a, b) => b.priority - a.priority);
 
-    const responseHeaders = details.responseHeaders ? [...details.responseHeaders] : [];
-    let modified = false;
-
-    this.logger.info("csp rule matched", {
-      url: details.url,
-      hostname: url.hostname,
-      matchedRules: matchingRules.map((r) => ({ name: r.name, action: r.action, priority: r.priority })),
-    });
-
-    for (const rule of matchingRules) {
-      const cspHeaderIndex = responseHeaders.findIndex((h) => h.name.toLowerCase() === "content-security-policy");
-
-      if (rule.action === "remove") {
-        if (cspHeaderIndex !== -1) {
-          const removed = responseHeaders.splice(cspHeaderIndex, 1);
-          modified = true;
-          this.logger.info("removed csp header", { 
-            url: details.url, 
-            rule: rule.name,
-            removedHeader: removed[0]
-          });
-        } else {
-          this.logger.debug("csp header not found, nothing to remove", { url: details.url, rule: rule.name });
-        }
-      } else if (rule.action === "modify" && rule.actionValue) {
-        if (cspHeaderIndex !== -1) {
-          const originalCSP = responseHeaders[cspHeaderIndex].value || "";
-          const modifiedCSP = this.modifyCSP(originalCSP, rule.actionValue);
-          responseHeaders[cspHeaderIndex].value = modifiedCSP;
-          modified = true;
-          this.logger.info("modified csp header", { 
-            url: details.url, 
-            rule: rule.name,
-            originalCSP,
-            modifiedCSP 
-          });
-        } else {
-          responseHeaders.push({
-            name: "Content-Security-Policy",
-            value: rule.actionValue,
-          });
-          modified = true;
-          this.logger.info("added csp header", { url: details.url, rule: rule.name, cspValue: rule.actionValue });
-        }
-      }
-    }
-
-    if (modified) {
-      this.logger.info("response headers modified", { 
-        url: details.url,
-        finalHeaders: responseHeaders.filter(h => h.name.toLowerCase().includes('security'))
-      });
-      return { responseHeaders };
-    }
-    return undefined;
-  }
-
-  private matchRule(rule: CSPRule, url: string, hostname: string): boolean {
-    if (!rule.enabled) {
-      return false;
-    }
-
-    const pattern = rule.path;
-
-    // Regex pattern (wrapped in /)
-    if (pattern.startsWith("/") && pattern.endsWith("/")) {
-      try {
-        const regex = new RegExp(pattern.slice(1, -1), "i");
-        const matches = regex.test(url);
-        this.logger.debug("regex pattern match", { pattern, url, matches });
-        return matches;
-      } catch (e) {
-        this.logger.error("invalid regex pattern", { pattern, error: String(e) });
-        return false;
-      }
-    }
-
-    // Wildcard pattern starting with *://
-    if (pattern.startsWith("*://")) {
-      const regexPattern = pattern
-        .replace(/\./g, "\\.")
-        .replace(/\*/g, ".*")
-        .replace(/\?/g, ".");
-      try {
-        const regex = new RegExp(`^${regexPattern}$`, "i");
-        const matches = regex.test(url);
-        this.logger.debug("wildcard *:// pattern match", { pattern, url, matches });
-        return matches;
-      } catch (e) {
-        this.logger.error("invalid wildcard pattern", { pattern, error: String(e) });
-        return false;
-      }
-    }
-
-    // General wildcard pattern
-    if (pattern.includes("*")) {
-      const regexPattern = pattern
-        .replace(/\./g, "\\.")
-        .replace(/\*/g, ".*")
-        .replace(/\?/g, ".");
-      try {
-        const regex = new RegExp(`^${regexPattern}$`, "i");
-        const matches = regex.test(url) || regex.test(hostname);
-        this.logger.debug("general wildcard pattern match", { pattern, url, hostname, matches });
-        return matches;
-      } catch (e) {
-        this.logger.error("invalid pattern", { pattern, error: String(e) });
-        return false;
-      }
-    }
-
-    // Exact match or substring match
-    const exactMatch = hostname === pattern || url === pattern;
-    const substringMatch = url.includes(pattern);
-    this.logger.debug("exact/substring pattern match", { pattern, url, hostname, exactMatch, substringMatch });
-    return exactMatch || substringMatch;
-  }
-
-  private modifyCSP(originalCSP: string, additionalDirectives: string): string {
-    const directives = additionalDirectives
-      .split(";")
-      .map((d) => d.trim())
-      .filter((d) => d);
-
-    let csp = originalCSP;
-
-    for (const directive of directives) {
-      const [directiveName, ...directiveValues] = directive.split(/\s+/);
-      const directiveNameLower = directiveName.toLowerCase();
-
-      const existingDirectiveRegex = new RegExp(`(${directiveNameLower}\\s+[^;]*)`, "i");
-      const match = csp.match(existingDirectiveRegex);
-
-      if (match) {
-        for (const value of directiveValues) {
-          if (!match[1].includes(value)) {
-            csp = csp.replace(existingDirectiveRegex, `$1 ${value}`);
+      for (const rule of sortedRules) {
+        const dnrRules = this.convertToDeclarativeRule(rule);
+        if (dnrRules) {
+          for (const dnrRule of dnrRules) {
+            if (newRules.length >= MAX_DYNAMIC_RULES) {
+              this.logger.warn("max dynamic rules limit reached", { limit: MAX_DYNAMIC_RULES });
+              break;
+            }
+            newRules.push(dnrRule);
           }
         }
-      } else {
-        csp += `; ${directive}`;
+        if (newRules.length >= MAX_DYNAMIC_RULES) {
+          break;
+        }
+      }
+
+      this.logger.info("updating declarative rules", {
+        removeCount: existingRuleIds.length,
+        addCount: newRules.length,
+      });
+
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: existingRuleIds,
+        addRules: newRules,
+      });
+
+      this.logger.info("declarative rules updated successfully");
+    } catch (e) {
+      this.logger.error("failed to update declarative rules", { error: String(e) });
+    }
+  }
+
+  private convertToDeclarativeRule(rule: CSPRule): hrome.declarativeNetRequest.Rule[] | null {
+    if (!rule.enabled) {
+      return null;
+    }
+
+    const conditions = this.buildConditions(rule.path);
+    if (conditions.length === 0) {
+      this.logger.warn("could not build condition for rule", { ruleName: rule.name, path: rule.path });
+      return null;
+    }
+
+    const dnrRules: chrome.declarativeNetRequest.Rule[] = [];
+
+    for (const condition of conditions) {
+      const ruleId = this.ruleIdCounter++;
+
+      if (rule.action === "remove") {
+        dnrRules.push({
+          id: ruleId,
+          priority: rule.priority,
+          action: {
+            type: "modifyHeaders" as chrome.declarativeNetRequest.RuleActionType,
+            responseHeaders: [
+              {
+                header: "Content-Security-Policy",
+                operation: "remove" as chrome.declarativeNetRequest.HeaderOperation,
+              },
+              {
+                header: "Content-Security-Policy-Report-Only",
+                operation: "remove" as chrome.declarativeNetRequest.HeaderOperation,
+              },
+              {
+                header: "X-Content-Security-Policy",
+                operation: "remove" as chrome.declarativeNetRequest.HeaderOperation,
+              },
+              {
+                header: "X-WebKit-CSP",
+                operation: "remove" as chrome.declarativeNetRequest.HeaderOperation,
+              },
+            ],
+          },
+          condition: {
+            ...condition,
+            resourceTypes: ["main_frame", "sub_frame"] as chrome.declarativeNetRequest.ResourceType[],
+          },
+        });
+      } else if (rule.action === "modify" && rule.actionValue) {
+        dnrRules.push({
+          id: ruleId,
+          priority: rule.priority,
+          action: {
+            type: "modifyHeaders" as chrome.declarativeNetRequest.RuleActionType,
+            responseHeaders: [
+              {
+                header: "Content-Security-Policy",
+                operation: "set" as chrome.declarativeNetRequest.HeaderOperation,
+                value: rule.actionValue,
+              },
+            ],
+          },
+          condition: {
+            ...condition,
+            resourceTypes: ["main_frame", "sub_frame"] as chrome.declarativeNetRequest.ResourceType[],
+          },
+        });
       }
     }
 
-    return csp;
+    return dnrRules;
+  }
+
+  private buildConditions(pattern: string): Partial<chrome.declarativeNetRequest.RuleCondition>[] {
+    const conditions: Partial<chrome.declarativeNetRequest.RuleCondition>[] = [];
+
+    if (pattern.startsWith("/") && pattern.endsWith("/")) {
+      const regexPattern = pattern.slice(1, -1);
+      try {
+        new RegExp(regexPattern);
+        conditions.push({
+          regexFilter: regexPattern,
+        });
+        this.logger.debug("using regex filter", { pattern, regexPattern });
+      } catch (e) {
+        this.logger.error("invalid regex pattern", { pattern, error: String(e) });
+      }
+    } else if (pattern === "*" || pattern === "*://*" || pattern === "*://*/*") {
+      conditions.push({
+        urlFilter: "*",
+      });
+      this.logger.debug("using wildcard for all urls", { pattern });
+    } else if (pattern.startsWith("*://")) {
+      const urlFilter = this.convertWildcardToUrlFilter(pattern);
+      conditions.push({
+        urlFilter: urlFilter,
+      });
+      this.logger.debug("using url filter from wildcard", { pattern, urlFilter });
+    } else if (pattern.includes("*")) {
+      const urlFilter = this.convertWildcardToUrlFilter(pattern);
+      conditions.push({
+        urlFilter: urlFilter,
+      });
+      this.logger.debug("using url filter from general wildcard", { pattern, urlFilter });
+    } else {
+      if (pattern.includes("://")) {
+        conditions.push({
+          urlFilter: `|${pattern}|`,
+        });
+      } else {
+        conditions.push({
+          urlFilter: `||${pattern}`,
+        });
+      }
+      this.logger.debug("using exact/substring match", { pattern });
+    }
+
+    return conditions;
+  }
+
+  private convertWildcardToUrlFilter(pattern: string): string {
+    let urlFilter = pattern;
+
+    if (!urlFilter.includes("://")) {
+      if (urlFilter.startsWith("*.")) {
+        urlFilter = `*://${urlFilter}`;
+      } else if (urlFilter.startsWith("*")) {
+        urlFilter = `*://${urlFilter}`;
+      } else {
+        urlFilter = `*://${urlFilter}`;
+      }
+    }
+
+    if (urlFilter.startsWith("*://")) {
+      urlFilter = `*://${urlFilter.slice(4)}`;
+    }
+
+    urlFilter = urlFilter
+      .replace(/^(\*):\/\//, "*://")
+      .replace(/\.\*/g, "*")
+      .replace(/\.\?/g, "?");
+
+    if (!urlFilter.endsWith("*") && !urlFilter.endsWith("|")) {
+      if (urlFilter.includes("/")) {
+        const lastSlash = urlFilter.lastIndexOf("/");
+        const afterSlash = urlFilter.slice(lastSlash + 1);
+        if (afterSlash && !afterSlash.includes("*")) {
+          urlFilter = urlFilter + "*";
+        }
+      } else {
+        urlFilter = urlFilter + "/*";
+      }
+    }
+
+    return urlFilter;
+  }
+
+  async addRule(_rule: CSPRule): Promise<void> {
+    await this.updateDeclarativeRules();
+  }
+
+  async removeRule(_ruleId: string): Promise<void> {
+    await this.updateDeclarativeRules();
+  }
+
+  async updateRule(_rule: CSPRule): Promise<void> {
+    await this.updateDeclarativeRules();
   }
 }
