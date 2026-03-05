@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Select, Tooltip, Modal, Input } from "@arco-design/web-react";
 import { searchKnowledgeBase, formatKnowledgeForPrompt } from "@App/pkg/utils/knowledge-base";
 import { useAIConfig, loadSelectedConfigId, saveSelectedConfigId } from "@App/pkg/ai";
@@ -16,6 +17,7 @@ import { extractCodeBlocks, replaceElementRefs } from "./utils/messageUtils";
 import type { Message } from "./types";
 
 export function SidePanelApp() {
+  const { t } = useTranslation();
   // 使用{"共"}享的AI配置hook
   const { aiConfigs, loading: _configLoading, loadData: loadAIConfig } = useAIConfig();
   const [selectedConfigId, setSelectedConfigId] = useState<string>("");
