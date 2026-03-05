@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Button,
   Card,
@@ -22,11 +22,13 @@ import type { CSPRule, CSPRuleAction } from "@App/app/repo/cspRule";
 import { formatUnixTime } from "@App/pkg/utils/day_format";
 import { CSPRuleClient } from "@App/app/service/service_worker/client";
 import { message } from "@App/pages/store/global";
+import { useTranslation } from "react-i18next";
 
 const FormItem = Form.Item;
 const { Title } = Typography;
 
 const CSPRuleManage: React.FC = () => {
+  const { t } = useTranslation();
   const [rules, setRules] = useState<CSPRule[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -35,21 +37,22 @@ const CSPRuleManage: React.FC = () => {
 
   const cspRuleClient = new CSPRuleClient(message);
 
-  const loadRules = async () => {
+  const loadRules = useCallback(async () => {
     setLoading(true);
     try {
       const data = await cspRuleClient.getAllRules();
       setRules(data);
     } catch (e: any) {
-      Message.error(`加载规则失败: ${e.message}`);
+      Message.error(`${t("csp_rule_page.load_failed")}: ${e.message}`);
     } finally {
       setLoading(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t]);
 
   useEffect(() => {
     loadRules();
-  }, []);
+  }, [loadRules]);
 
   const handleAdd = () => {
     setEditingRule(null);
@@ -71,10 +74,10 @@ const CSPRuleManage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await cspRuleClient.deleteRule(id);
-      Message.success("删除成功");
+      Message.success(t("csp_rule_page.delete_success"));
       loadRules();
     } catch (e: any) {
-      Message.error(`删除失败: ${e.message}`);
+      Message.error(`${t("csp_rule_page.delete_failed")}: ${e.message}`);
     }
   };
 
@@ -83,7 +86,7 @@ const CSPRuleManage: React.FC = () => {
       await cspRuleClient.toggleRule(id, enabled);
       loadRules();
     } catch (e: any) {
-      Message.error(`操作失败: ${e.message}`);
+      Message.error(`${t("csp_rule_page.operation_failed")}: ${e.message}`);
     }
   };
 
@@ -94,21 +97,21 @@ const CSPRuleManage: React.FC = () => {
 
       if (editingRule) {
         await cspRuleClient.updateRule(editingRule.id, values);
-        Message.success("更新成功");
+        Message.success(t("csp_rule_page.update_success"));
       } else {
         await cspRuleClient.createRule(values);
-        Message.success("创建成功");
+        Message.success(t("csp_rule_page.create_success"));
       }
       setModalVisible(false);
       loadRules();
     } catch (e: any) {
-      Message.error(`操作失败: ${e.message}`);
+      Message.error(`${t("csp_rule_page.operation_failed")}: ${e.message}`);
     }
   };
 
   const columns: ColumnProps<CSPRule>[] = [
     {
-      title: "启用",
+      title: t("enable"),
       dataIndex: "enabled",
       width: 80,
       render: (enabled, record) => (
@@ -116,12 +119,12 @@ const CSPRuleManage: React.FC = () => {
       ),
     },
     {
-      title: "规则名称",
+      title: t("csp_rule_page.rule_name"),
       dataIndex: "name",
       width: 150,
     },
     {
-      title: "描述",
+      title: t("description"),
       dataIndex: "description",
       width: 200,
       render: (text) => <span className="text-gray-500">{text || "-"}</span>,
@@ -129,8 +132,8 @@ const CSPRuleManage: React.FC = () => {
     {
       title: (
         <Space>
-          匹配路径
-          <Tooltip content="支持通配符(*匹配任意字符)、正则表达式(用/包裹，如/https?:\/\/example\.com\/.*/i)">
+          {t("csp_rule_page.match_path")}
+          <Tooltip content={t("csp_rule_page.match_path_tooltip")}>
             <IconQuestionCircle />
           </Tooltip>
         </Space>
@@ -140,15 +143,17 @@ const CSPRuleManage: React.FC = () => {
       render: (text) => <code className="text-xs bg-gray-100 px-1 rounded">{text}</code>,
     },
     {
-      title: "操作类型",
+      title: t("csp_rule_page.action_type"),
       dataIndex: "action",
       width: 100,
       render: (action: CSPRuleAction) => (
-        <Tag color={action === "remove" ? "red" : "blue"}>{action === "remove" ? "移除CSP" : "修改CSP"}</Tag>
+        <Tag color={action === "remove" ? "red" : "blue"}>
+          {action === "remove" ? t("csp_rule_page.remove_csp") : t("csp_rule_page.modify_csp")}
+        </Tag>
       ),
     },
     {
-      title: "修改值",
+      title: t("csp_rule_page.modify_value"),
       dataIndex: "actionValue",
       width: 200,
       render: (text, record) =>
@@ -159,35 +164,40 @@ const CSPRuleManage: React.FC = () => {
         ),
     },
     {
-      title: "优先级",
+      title: t("csp_rule_page.priority"),
       dataIndex: "priority",
       width: 80,
       sorter: (a, b) => a.priority - b.priority,
     },
     {
-      title: "创建时间",
+      title: t("csp_rule_page.create_time"),
       dataIndex: "createtime",
       width: 150,
       render: (time) => formatUnixTime(time),
     },
     {
-      title: "更新时间",
+      title: t("csp_rule_page.update_time"),
       dataIndex: "updatetime",
       width: 150,
       render: (time) => formatUnixTime(time),
     },
     {
-      title: "操作",
+      title: t("action"),
       width: 150,
       fixed: "right",
       render: (_, record) => (
         <Space>
           <Button type="text" size="small" icon={<IconEdit />} onClick={() => handleEdit(record)}>
-            编辑
+            {t("edit")}
           </Button>
-          <Popconfirm title="确定删除此规则吗？" onOk={() => handleDelete(record.id)} okText="确定" cancelText="取消">
+          <Popconfirm
+            title={t("csp_rule_page.confirm_delete")}
+            onOk={() => handleDelete(record.id)}
+            okText={t("confirm")}
+            cancelText={t("close")}
+          >
             <Button type="text" size="small" status="danger" icon={<IconDelete />}>
-              删除
+              {t("delete")}
             </Button>
           </Popconfirm>
         </Space>
@@ -199,9 +209,9 @@ const CSPRuleManage: React.FC = () => {
     <div className="p-4 h-full overflow-auto">
       <Card>
         <div className="flex justify-between items-center mb-4">
-          <Title heading={5}>CSP处理规则</Title>
+          <Title heading={5}>{t("csp_rule_page.title")}</Title>
           <Button type="primary" icon={<IconPlus />} onClick={handleAdd}>
-            添加规则
+            {t("csp_rule_page.add_rule")}
           </Button>
         </div>
         <Table
@@ -218,7 +228,7 @@ const CSPRuleManage: React.FC = () => {
       </Card>
 
       <Modal
-        title={editingRule ? "编辑规则" : "添加规则"}
+        title={editingRule ? t("csp_rule_page.edit_rule") : t("csp_rule_page.add_rule")}
         visible={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
@@ -227,30 +237,34 @@ const CSPRuleManage: React.FC = () => {
         style={{ width: 600 }}
       >
         <Form form={form} layout="vertical">
-          <FormItem label="规则名称" field="name" rules={[{ required: true, message: "请输入规则名称" }]}>
-            <Input placeholder="请输入规则名称" />
+          <FormItem
+            label={t("csp_rule_page.rule_name")}
+            field="name"
+            rules={[{ required: true, message: t("csp_rule_page.enter_rule_name") }]}
+          >
+            <Input placeholder={t("csp_rule_page.enter_rule_name")} />
           </FormItem>
-          <FormItem label="描述" field="description">
-            <Input.TextArea placeholder="请输入规则描述" rows={2} />
+          <FormItem label={t("description")} field="description">
+            <Input.TextArea placeholder={t("csp_rule_page.enter_rule_description")} rows={2} />
           </FormItem>
           <FormItem
             label={
               <Space>
-                匹配路径
-                <Tooltip content="支持通配符(*匹配任意字符)、正则表达式(用/包裹)">
+                {t("csp_rule_page.match_path")}
+                <Tooltip content={t("csp_rule_page.match_path_tooltip")}>
                   <IconQuestionCircle />
                 </Tooltip>
               </Space>
             }
             field="path"
-            rules={[{ required: true, message: "请输入匹配路径" }]}
+            rules={[{ required: true, message: t("csp_rule_page.enter_path") }]}
           >
-            <Input placeholder="例如: *://example.com/* 或 /https?:\/\/example\.com\/.*/i" />
+            <Input placeholder="*://example.com/* or /https?:\\/\\/example\\.com\\/.*/i" />
           </FormItem>
-          <FormItem label="操作类型" field="action" rules={[{ required: true }]}>
+          <FormItem label={t("csp_rule_page.action_type")} field="action" rules={[{ required: true }]}>
             <Select>
-              <Select.Option value="remove">移除CSP头</Select.Option>
-              <Select.Option value="modify">修改CSP头</Select.Option>
+              <Select.Option value="remove">{t("csp_rule_page.remove_csp_header")}</Select.Option>
+              <Select.Option value="modify">{t("csp_rule_page.modify_csp_header")}</Select.Option>
             </Select>
           </FormItem>
           <Form.Item shouldUpdate noStyle>
@@ -259,24 +273,29 @@ const CSPRuleManage: React.FC = () => {
                 <FormItem
                   label={
                     <Space>
-                      CSP值
-                      <Tooltip content="要添加或修改的CSP指令，例如: script-src 'self' 'unsafe-inline' *">
+                      {t("csp_rule_page.csp_value")}
+                      <Tooltip content={t("csp_rule_page.csp_value_tooltip")}>
                         <IconQuestionCircle />
                       </Tooltip>
                     </Space>
                   }
                   field="actionValue"
-                  rules={[{ required: true, message: "请输入CSP值" }]}
+                  rules={[{ required: true, message: t("csp_rule_page.enter_csp_value") }]}
                 >
-                  <Input.TextArea placeholder="例如: script-src 'self' 'unsafe-inline' *; connect-src *" rows={3} />
+                  <Input.TextArea placeholder="script-src 'self' 'unsafe-inline' *; connect-src *" rows={3} />
                 </FormItem>
               )
             }
           </Form.Item>
-          <FormItem label="优先级" field="priority" rules={[{ required: true }]}>
-            <InputNumber min={1} max={1000} placeholder="数值越大优先级越高" style={{ width: "100%" }} />
+          <FormItem label={t("csp_rule_page.priority")} field="priority" rules={[{ required: true }]}>
+            <InputNumber
+              min={1}
+              max={1000}
+              placeholder={t("csp_rule_page.priority_tooltip")}
+              style={{ width: "100%" }}
+            />
           </FormItem>
-          <FormItem label="启用" field="enabled" triggerPropName="checked">
+          <FormItem label={t("enable")} field="enabled" triggerPropName="checked">
             <Switch defaultChecked />
           </FormItem>
         </Form>

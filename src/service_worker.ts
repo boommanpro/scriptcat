@@ -797,23 +797,23 @@ const apiActions: {
     }
   },
 
-  async "ai-start-network-monitor"(message: any, _sender: RuntimeMessageSender) {
+  async "ai-start-network-monitor"(_message: any, _sender: RuntimeMessageSender) {
     // 网络监控逻辑已移至 SidePanel 的 hook 中
     // 这里只返回成功，实际注入由 hook 处理
     return { success: true };
   },
 
-  async "ai-stop-network-monitor"(message: any, _sender: RuntimeMessageSender) {
+  async "ai-stop-network-monitor"(_message: any, _sender: RuntimeMessageSender) {
     // 停止逻辑由 hook 处理
     return { success: true };
   },
 
-  async "ai-start-console-monitor"(message: any, _sender: RuntimeMessageSender) {
+  async "ai-start-console-monitor"(_message: any, _sender: RuntimeMessageSender) {
     // 控制台监控逻辑已移至 SidePanel 的 hook 中
     return { success: true };
   },
 
-  async "ai-stop-console-monitor"(message: any, _sender: RuntimeMessageSender) {
+  async "ai-stop-console-monitor"(_message: any, _sender: RuntimeMessageSender) {
     // 停止逻辑由 hook 处理
     return { success: true };
   },

@@ -1,5 +1,6 @@
 import React from "react";
 import type { NetworkRequest, ConsoleLog } from "@App/pkg/ai/types";
+import { useTranslation } from "react-i18next";
 
 interface MonitorTagsProps {
   selectedNetworkRequests: NetworkRequest[];
@@ -18,6 +19,7 @@ export const MonitorTags: React.FC<MonitorTagsProps> = ({
   onInsertAll,
   getLogLevelColor,
 }) => {
+  const { t } = useTranslation();
   const totalCount = selectedNetworkRequests.length + selectedConsoleLogs.length;
 
   if (totalCount === 0) return null;
@@ -35,7 +37,7 @@ export const MonitorTags: React.FC<MonitorTagsProps> = ({
     <div className="monitor-tags">
       <div className="monitor-tags-header">
         <button className="insert-all-btn" onClick={onInsertAll}>
-          插入全部监听项 ({totalCount})
+          {`${t("monitor.insert_all")} (${totalCount})`}
         </button>
       </div>
       <div className="monitor-tags-list">
@@ -45,8 +47,12 @@ export const MonitorTags: React.FC<MonitorTagsProps> = ({
             <span className="monitor-tag-text" title={request.url}>
               {formatUrl(request.url)}
             </span>
-            <span className="monitor-tag-remove" onClick={() => onRemoveNetworkRequest(request.id)} title="移除">
-              ×
+            <span
+              className="monitor-tag-remove"
+              onClick={() => onRemoveNetworkRequest(request.id)}
+              title={t("monitor.remove")}
+            >
+              {"×"}
             </span>
           </div>
         ))}
@@ -64,8 +70,8 @@ export const MonitorTags: React.FC<MonitorTagsProps> = ({
             <span className="monitor-tag-text" title={log.message}>
               {log.message.length > 30 ? log.message.substring(0, 30) + "..." : log.message}
             </span>
-            <span className="monitor-tag-remove" onClick={() => onRemoveConsoleLog(log.id)} title="移除">
-              ×
+            <span className="monitor-tag-remove" onClick={() => onRemoveConsoleLog(log.id)} title={t("monitor.remove")}>
+              {"×"}
             </span>
           </div>
         ))}

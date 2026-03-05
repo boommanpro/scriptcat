@@ -81,17 +81,17 @@ const Sider: React.FC = () => {
             </CustomLink>
             <CustomLink to="/csp-rule" className="menu-csp-rule">
               <MenuItem key="/csp-rule">
-                <IconLock /> CSP处理
+                <IconLock /> {t("csp_rule")}
               </MenuItem>
             </CustomLink>
             <CustomLink to="/automation-script" className="menu-automation-script">
               <MenuItem key="/automation-script">
-                <IconThunderbolt /> 自动化规则脚本
+                <IconThunderbolt /> {t("automation_script")}
               </MenuItem>
             </CustomLink>
             <CustomLink to="/ai-conversation" className="menu-ai-conversation">
               <MenuItem key="/ai-conversation">
-                <IconRobot /> {"AI设置"}
+                <IconRobot /> {t("ai_settings")}
               </MenuItem>
             </CustomLink>
             <CustomLink to="/setting" className="menu-setting">

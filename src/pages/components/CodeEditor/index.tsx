@@ -94,7 +94,7 @@ const CodeEditor: React.ForwardRefRenderFunction<{ editor: editor.IStandaloneCod
       // 问题追踪：https://github.com/microsoft/monaco-editor/issues/4702
       edit?.dispose();
     };
-  }, [div, diffCode, editable, id]);
+  }, [div, diffCode, editable, id, code]);
 
   useEffect(() => {
     if (!enableEslint) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Card, Table, Message, Popconfirm, Typography, Switch, Space } from "@arco-design/web-react";
 import { IconPlus, IconDelete, IconCopy } from "@arco-design/web-react/icon";
@@ -7,31 +7,34 @@ import type { AutomationScript } from "@App/app/repo/automationScript";
 import { formatUnixTime } from "@App/pkg/utils/day_format";
 import { AutomationScriptClient } from "@App/app/service/service_worker/client";
 import { message } from "@App/pages/store/global";
+import { useTranslation } from "react-i18next";
 
 const { Title } = Typography;
 
 const AutomationScriptManage: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [scripts, setScripts] = useState<AutomationScript[]>([]);
   const [loading, setLoading] = useState(false);
 
   const automationClient = new AutomationScriptClient(message);
 
-  const loadScripts = async () => {
+  const loadScripts = useCallback(async () => {
     setLoading(true);
     try {
       const data = await automationClient.getAllScripts();
       setScripts(data);
     } catch (e: any) {
-      Message.error(`加载脚本失败: ${e.message}`);
+      Message.error(`${t("automation_script_page.load_failed")}: ${e.message}`);
     } finally {
       setLoading(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t]);
 
   useEffect(() => {
     loadScripts();
-  }, []);
+  }, [loadScripts]);
 
   const handleAdd = () => {
     navigate("/automation-script/editor");
@@ -44,10 +47,10 @@ const AutomationScriptManage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await automationClient.deleteScript(id);
-      Message.success("删除成功");
+      Message.success(t("delete_success"));
       loadScripts();
     } catch (e: any) {
-      Message.error(`删除失败: ${e.message}`);
+      Message.error(`${t("delete_failed")}: ${e.message}`);
     }
   };
 
@@ -56,11 +59,11 @@ const AutomationScriptManage: React.FC = () => {
       await automationClient.toggleScript(id, enabled);
       loadScripts();
     } catch (e: any) {
-      Message.error(`操作失败: ${e.message}`);
+      Message.error(`${t("automation_script_page.operation_failed")}: ${e.message}`);
     }
   };
 
-  const handleCopy = (record: AutomationScript, e: React.MouseEvent) => {
+  const handleCopy = (record: AutomationScript, e: React.MouseEvent<Element, MouseEvent>) => {
     e.stopPropagation();
     navigate("/automation-script/editor", {
       state: { copyFrom: record },
@@ -69,7 +72,7 @@ const AutomationScriptManage: React.FC = () => {
 
   const columns: ColumnProps<AutomationScript>[] = [
     {
-      title: "启用",
+      title: t("enable"),
       dataIndex: "enabled",
       width: 80,
       render: (enabled, record) => (
@@ -81,7 +84,7 @@ const AutomationScriptManage: React.FC = () => {
       ),
     },
     {
-      title: "脚本名称",
+      title: t("automation_script_page.script_name"),
       dataIndex: "name",
       width: 150,
       render: (text) => (
@@ -91,19 +94,19 @@ const AutomationScriptManage: React.FC = () => {
       ),
     },
     {
-      title: "标识Key",
+      title: t("automation_script_page.key"),
       dataIndex: "key",
       width: 150,
       render: (text) => <code className="text-xs bg-gray-100 px-1 rounded">{text}</code>,
     },
     {
-      title: "描述",
+      title: t("description"),
       dataIndex: "description",
       width: 200,
       render: (text) => <span className="text-gray-500">{text || "-"}</span>,
     },
     {
-      title: "目标网址",
+      title: t("automation_script_page.target_url"),
       dataIndex: "targetUrl",
       width: 250,
       render: (text) =>
@@ -122,19 +125,19 @@ const AutomationScriptManage: React.FC = () => {
         ),
     },
     {
-      title: "创建时间",
+      title: t("csp_rule_page.create_time"),
       dataIndex: "createtime",
       width: 150,
       render: (time) => formatUnixTime(time / 1000),
     },
     {
-      title: "更新时间",
+      title: t("automation_script_page.update_time"),
       dataIndex: "updatetime",
       width: 150,
       render: (time) => formatUnixTime(time / 1000),
     },
     {
-      title: "操作",
+      title: t("action"),
       width: 140,
       fixed: "right",
       render: (_, record) => (
@@ -143,13 +146,18 @@ const AutomationScriptManage: React.FC = () => {
             type="text"
             size="small"
             icon={<IconCopy />}
-            onClick={(e) => handleCopy(record, e)}
+            onClick={(e: Event) => handleCopy(record, e as unknown as React.MouseEvent)}
           >
-            复制
+            {t("automation_script_page.copy")}
           </Button>
-          <Popconfirm title="确定删除此脚本吗？" onOk={() => handleDelete(record.id)} okText="确定" cancelText="取消">
+          <Popconfirm
+            title={t("automation_script_page.confirm_delete")}
+            onOk={() => handleDelete(record.id)}
+            okText={t("confirm")}
+            cancelText={t("close")}
+          >
             <Button type="text" size="small" status="danger" icon={<IconDelete />} onClick={(e) => e.stopPropagation()}>
-              删除
+              {t("delete")}
             </Button>
           </Popconfirm>
         </Space>
@@ -161,9 +169,9 @@ const AutomationScriptManage: React.FC = () => {
     <div className="p-4 h-full overflow-auto">
       <Card>
         <div className="flex justify-between items-center mb-4">
-          <Title heading={5}>自动化规则脚本</Title>
+          <Title heading={5}>{t("automation_script_page.title")}</Title>
           <Button type="primary" icon={<IconPlus />} onClick={handleAdd}>
-            添加脚本
+            {t("automation_script_page.add_script")}
           </Button>
         </div>
         <Table

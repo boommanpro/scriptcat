@@ -84,7 +84,7 @@ export function SidePanelApp() {
     selectAllRequests: selectAllNetworkRequests,
     insertSelectedRequests: insertSelectedNetworkRequests,
     formatRequestForPrompt,
-    getRequestById,
+    getRequestById: _getRequestById,
   } = useNetworkMonitor();
 
   const {
@@ -98,7 +98,7 @@ export function SidePanelApp() {
     selectAllLogs: selectAllConsoleLogs,
     insertSelectedLogs: insertSelectedConsoleLogs,
     formatLogForPrompt,
-    getLogById,
+    getLogById: _getLogById,
     getLogLevelColor,
   } = useConsoleMonitor();
 
@@ -486,7 +486,7 @@ export function SidePanelApp() {
   useEffect(() => {
     console.log("[SidePanel] Setting up message listener...");
 
-    const handleMessage = (message: any, sender: any, sendResponse: any) => {
+    const handleMessage = (message: any, sender: any, _sendResponse: any) => {
       console.log("[SidePanel] Received message:", message.type || message.message, message);
       console.log("[SidePanel] Sender:", sender);
 
@@ -529,6 +529,7 @@ export function SidePanelApp() {
     return () => {
       chrome.runtime.onMessage.removeListener(handleMessage);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // 空依赖数组，只在挂载时注册一次
 
   const handleConfigChange = async (value: string) => {
@@ -816,9 +817,9 @@ export function SidePanelApp() {
             className={isLoading ? "stop-btn" : "send-btn"}
             onClick={isLoading ? handleStopGeneration : handleSend}
             disabled={!isLoading && !inputValue.trim()}
-            title={isLoading ? "停止生成" : "发送消息"}
+            title={isLoading ? t("stop_generation") : t("send_message")}
           >
-            {isLoading ? <span className="stop-icon">⏹</span> : "发送"}
+            {isLoading ? <span className="stop-icon">{"⏹"}</span> : t("send")}
           </button>
         </div>
       </div>

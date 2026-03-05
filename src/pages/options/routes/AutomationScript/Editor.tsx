@@ -25,6 +25,7 @@ import { v4 as uuidv4 } from "uuid";
 import type { editor } from "monaco-editor";
 import "@App/pages/options/routes/script/index.css";
 import { defaultConfig as automationEslintConfig } from "@Packages/eslint/automation-linter-config";
+import { useTranslation } from "react-i18next";
 
 const FormItem = Form.Item;
 const { Title, Text } = Typography;
@@ -63,6 +64,7 @@ const ScriptEditorComponent: React.FC<{
     return () => {
       handler.dispose();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node?.editor]);
 
   return (
@@ -116,6 +118,7 @@ const AutomationScriptEditor: React.FC = () => {
   const navigate = useNavigate();
   const params = useParams();
   const location = useLocation();
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -142,7 +145,7 @@ const AutomationScriptEditor: React.FC = () => {
       const copyScript = locationState.copyFrom;
       setIsCopyMode(true);
       setEditingScript(null);
-      const newName = `${copyScript.name} (副本)`;
+      const newName = `${copyScript.name} (${t("automation_script_page.copy_suffix")})`;
       const newKey = `${copyScript.key}_copy_${Date.now()}`;
       form.setFieldsValue({
         ...copyScript,
@@ -187,6 +190,7 @@ return { success: true, received: input };
     }
 
     loadTabs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scriptId]);
 
   const loadTabs = async () => {
@@ -216,11 +220,11 @@ return { success: true, received: input };
         const logs = await automationClient.getTestLogs(script.key);
         setTestLogs(logs);
       } else {
-        Message.error("脚本不存在");
+        Message.error(t("automation_script_page.script_not_found"));
         navigate("/automation-script");
       }
     } catch (e: any) {
-      Message.error(`加载脚本失败: ${e.message}`);
+      Message.error(`${t("automation_script_page.load_failed")}: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -254,7 +258,7 @@ return { success: true, received: input };
       console.log("=== End Save Info ===");
 
       if (!scriptValue || scriptValue.trim() === "") {
-        Message.error("请输入执行脚本");
+        Message.error(t("automation_script_page.enter_script"));
         return;
       }
 
@@ -268,14 +272,14 @@ return { success: true, received: input };
       setSaving(true);
       if (editingScript && !isCopyMode) {
         const updated = await automationClient.updateScript(editingScript.id, values);
-        Message.success("更新成功");
+        Message.success(t("automation_script_page.update_success"));
         if (updated) {
           setEditingScript(updated);
           console.log("Script updated, editingScript state refreshed");
         }
       } else {
         const result = await automationClient.createScript(values as any);
-        Message.success("创建成功");
+        Message.success(t("automation_script_page.create_success"));
         setEditingScript(result);
         setIsCopyMode(false);
         console.log("Script created, new ID:", result.id);
@@ -284,9 +288,9 @@ return { success: true, received: input };
     } catch (e: any) {
       if (e && e.errors) {
         const errorMessages = Object.values(e.errors).flat().join(", ");
-        Message.error(`保存失败: ${errorMessages}`);
+        Message.error(`${t("automation_script_page.save_failed")}: ${errorMessages}`);
       } else {
-        Message.error(`保存失败: ${e.message || e}`);
+        Message.error(`${t("automation_script_page.save_failed")}: ${e.message || e}`);
       }
     } finally {
       setSaving(false);
@@ -299,27 +303,27 @@ return { success: true, received: input };
 
   const handleOpenTargetPage = async () => {
     if (!editingScript) {
-      Message.warning("请先保存脚本");
+      Message.warning(t("automation_script_page.save_script_first"));
       return;
     }
     try {
       const tabId = await automationClient.openTargetPage(editingScript.key);
-      Message.success("已打开目标页面");
+      Message.success(t("automation_script_page.target_page_opened"));
       loadTabs();
       setSelectedTabId(tabId);
     } catch (e: any) {
-      Message.error(`打开页面失败: ${e.message}`);
+      Message.error(`${t("automation_script_page.open_page_failed")}: ${e.message}`);
     }
   };
 
   const handleRunTest = async () => {
     if (!editingScript) {
-      Message.warning("请先保存脚本后再进行测试");
+      Message.warning(t("automation_script_page.save_before_test"));
       return;
     }
 
     if (!scriptCode || scriptCode.trim() === "") {
-      Message.warning("请输入脚本代码");
+      Message.warning(t("automation_script_page.enter_script_code"));
       return;
     }
 
@@ -356,12 +360,12 @@ return { success: true, received: input };
       );
       setTestLogs([log, ...testLogs]);
       if (log.status === "success") {
-        Message.success("测试成功");
+        Message.success(t("automation_script_page.test_success"));
       } else {
-        Message.error(`测试失败: ${log.error}`);
+        Message.error(`${t("automation_script_page.test_failed")}: ${log.error}`);
       }
     } catch (e: any) {
-      Message.error(`测试失败: ${e.message}`);
+      Message.error(`${t("automation_script_page.test_failed")}: ${e.message}`);
     } finally {
       setTestRunning(false);
     }
@@ -402,46 +406,50 @@ return { success: true, received: input };
 
   const logColumns = [
     {
-      title: "状态",
+      title: t("automation_script_page.status"),
       dataIndex: "status",
       width: 60,
       render: (status: string) => (
         <Tag color={status === "success" ? "green" : status === "error" ? "red" : "blue"} size="small">
-          {status === "success" ? "成功" : status === "error" ? "失败" : "运行"}
+          {status === "success"
+            ? t("automation_script_page.success")
+            : status === "error"
+              ? t("automation_script_page.failed")
+              : t("automation_script_page.running")}
         </Tag>
       ),
     },
     {
-      title: "任务ID",
+      title: t("automation_script_page.task_id"),
       dataIndex: "testTaskId",
       width: 100,
       render: (testTaskId: string) =>
         testTaskId ? (
           <Tooltip content={testTaskId}>
-            <span className="text-xs font-mono">{testTaskId.slice(0, 8)}...</span>
+            <span className="text-xs font-mono">{`${testTaskId.slice(0, 8)}...`}</span>
           </Tooltip>
         ) : (
           "-"
         ),
     },
     {
-      title: "时间",
+      title: t("automation_script_page.time"),
       dataIndex: "createtime",
       width: 80,
       render: (time: number) => <span className="text-xs">{formatUnixTime(time / 1000)}</span>,
     },
     {
-      title: "耗时",
+      title: t("automation_script_page.duration"),
       dataIndex: "duration",
       width: 60,
-      render: (duration: number) => <span className="text-xs">{duration || "-"}ms</span>,
+      render: (duration: number) => <span className="text-xs">{`${duration || "-"}ms`}</span>,
     },
     {
-      title: "操作",
+      title: t("action"),
       width: 50,
       render: (_: any, record: AutomationTestLog) => (
         <Button type="text" size="mini" onClick={() => handleRerunLog(record)}>
-          重测
+          {t("automation_script_page.rerun")}
         </Button>
       ),
     },
@@ -450,12 +458,12 @@ return { success: true, received: input };
   const expandedRowRender = (record: AutomationTestLog) => {
     return (
       <div className="p-2 bg-gray-50 space-y-2">
-        <JsonViewer data={record.inputJson} title="输入参数" />
-        {record.outputJson && <JsonViewer data={record.outputJson} title="返回结果" />}
+        <JsonViewer data={record.inputJson} title={t("automation_script_page.input_params")} />
+        {record.outputJson && <JsonViewer data={record.outputJson} title={t("automation_script_page.return_result")} />}
         {record.error && (
           <div className="text-xs">
             <Text bold className="block mb-1 text-red-500">
-              错误信息
+              {t("automation_script_page.error_info")}
             </Text>
             <pre className="bg-red-50 p-2 rounded overflow-auto max-h-40 text-xs text-red-600 whitespace-pre-wrap break-all">
               {record.error}
@@ -471,10 +479,14 @@ return { success: true, received: input };
       <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200">
         <Space>
           <Button icon={<IconLeft />} onClick={handleBack}>
-            返回
+            {t("back")}
           </Button>
           <Title heading={5} className="m-0">
-            {isCopyMode ? "复制脚本" : editingScript ? "编辑脚本" : "新建脚本"}
+            {isCopyMode
+              ? t("automation_script_page.copy_script")
+              : editingScript
+                ? t("automation_script_page.edit_script")
+                : t("automation_script_page.new_script")}
           </Title>
         </Space>
         <Space>
@@ -483,7 +495,7 @@ return { success: true, received: input };
               icon={<IconCopy />}
               onClick={() => {
                 setIsCopyMode(true);
-                const newName = `${editingScript.name} (副本)`;
+                const newName = `${editingScript.name} (${t("automation_script_page.copy_suffix")})`;
                 const newKey = `${editingScript.key}_copy_${Date.now()}`;
                 form.setFieldsValue({
                   name: newName,
@@ -493,49 +505,57 @@ return { success: true, received: input };
                 setEditingScript(null);
               }}
             >
-              复制
+              {t("automation_script_page.copy")}
             </Button>
           )}
           <Button type="primary" icon={<IconSave />} onClick={handleSave} loading={saving}>
-            保存
+            {t("save")}
           </Button>
         </Space>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        <Card className="w-72 flex-shrink-0 m-2 overflow-auto" title="基本信息">
+        <Card className="w-72 flex-shrink-0 m-2 overflow-auto" title={t("automation_script_page.basic_info")}>
           <Form form={form} layout="vertical" disabled={loading} size="small">
-            <FormItem label="脚本名称" field="name" rules={[{ required: true, message: "请输入脚本名称" }]}>
-              <Input placeholder="请输入脚本名称" />
+            <FormItem
+              label={t("automation_script_page.script_name")}
+              field="name"
+              rules={[{ required: true, message: t("automation_script_page.enter_script_name") }]}
+            >
+              <Input placeholder={t("automation_script_page.enter_script_name")} />
             </FormItem>
             <FormItem
-              label="标识Key"
+              label={t("automation_script_page.key_label")}
               field="key"
               rules={[
-                { required: true, message: "请输入标识Key" },
-                { match: /^[a-zA-Z0-9_-]+$/, message: "只能包含字母、数字、下划线和连字符" },
+                { required: true, message: t("automation_script_page.enter_key") },
+                { match: /^[a-zA-Z0-9_-]+$/, message: t("automation_script_page.key_rule") },
               ]}
             >
-              <Input placeholder="唯一标识" disabled={!!editingScript} />
+              <Input placeholder={t("automation_script_page.unique_key")} disabled={!!editingScript} />
             </FormItem>
-            <FormItem label="描述" field="description">
-              <Input.TextArea placeholder="请输入脚本描述" rows={2} />
+            <FormItem label={t("description")} field="description">
+              <Input.TextArea placeholder={t("automation_script_page.enter_description_optional")} rows={2} />
             </FormItem>
-            <FormItem label="目标网址" field="targetUrl">
-              <Input placeholder="目标页面URL，可选" />
+            <FormItem label={t("automation_script_page.target_url")} field="targetUrl">
+              <Input placeholder={t("automation_script_page.target_url_optional")} />
             </FormItem>
             <FormItem
-              label="等待返回值"
+              label={t("automation_script_page.wait_for_response")}
               field="waitForResponse"
               triggerPropName="checked"
-              extra="开启后，脚本执行将等待页面通过 postMessage 返回结果"
+              extra={t("automation_script_page.wait_for_response_desc")}
             >
               <Switch />
             </FormItem>
-            <FormItem label="超时时间 (ms)" field="responseTimeout" extra="等待 postMessage 响应的最大时间">
+            <FormItem
+              label={t("automation_script_page.timeout_ms")}
+              field="responseTimeout"
+              extra={t("automation_script_page.timeout_desc")}
+            >
               <InputNumber min={1000} max={120000} step={1000} style={{ width: "100%" }} />
             </FormItem>
-            <FormItem label="启用" field="enabled" triggerPropName="checked">
+            <FormItem label={t("automation_script_page.enable")} field="enabled" triggerPropName="checked">
               <Switch />
             </FormItem>
           </Form>
@@ -543,7 +563,7 @@ return { success: true, received: input };
 
         <Card
           className="flex-1 m-2 ml-0 flex flex-col overflow-hidden"
-          title="执行脚本"
+          title={t("automation_script_page.execute_script")}
           style={{ display: "flex", flexDirection: "column" }}
           bodyStyle={{
             flex: 1,
@@ -561,19 +581,19 @@ return { success: true, received: input };
 
         <Card
           className="w-80 flex-shrink-0 m-2 ml-0 flex flex-col overflow-hidden"
-          title="测试"
+          title={t("automation_script_page.test")}
           bodyStyle={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "8px" }}
         >
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="mb-2">
               <div className="flex justify-between items-center mb-1">
-                <Text bold>目标标签页</Text>
+                <Text bold>{t("automation_script_page.target_tab")}</Text>
                 <Button size="mini" icon={<IconRefresh />} onClick={loadTabs}>
-                  刷新
+                  {t("automation_script_page.refresh")}
                 </Button>
               </div>
               <Select
-                placeholder="选择标签页或使用目标网址"
+                placeholder={t("automation_script_page.select_tab_or_url")}
                 value={selectedTabId}
                 onChange={(val) => setSelectedTabId(val)}
                 style={{ width: "100%" }}
@@ -592,7 +612,7 @@ return { success: true, received: input };
 
             <div className="mb-2">
               <Text bold className="block mb-1">
-                输入参数 (JSON)
+                {t("automation_script_page.input_params_json")}
               </Text>
               <Input.TextArea
                 value={testInput}
@@ -612,24 +632,24 @@ return { success: true, received: input };
                 disabled={!editingScript}
                 size="small"
               >
-                {editingScript ? "执行测试" : "请先保存"}
+                {editingScript ? t("automation_script_page.execute_test") : t("automation_script_page.save_first")}
               </Button>
               {editingScript?.targetUrl && (
                 <Button icon={<IconPlayArrow />} onClick={handleOpenTargetPage} size="small">
-                  打开目标页
+                  {t("automation_script_page.open_target_page")}
                 </Button>
               )}
             </Space>
 
             {editingScript && scriptCode !== editingScript.script && (
               <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">
-                当前测试将使用编辑框中的未保存内容
+                {t("automation_script_page.unsaved_content_warning")}
               </div>
             )}
 
             <div className="mt-2 flex-1 overflow-hidden flex flex-col">
               <Text bold className="block mb-2">
-                测试历史（点击行展开查看详情）
+                {t("automation_script_page.test_history")}
               </Text>
               <div className="flex-1 overflow-auto">
                 <Table

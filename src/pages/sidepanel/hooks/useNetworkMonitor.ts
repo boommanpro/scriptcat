@@ -149,7 +149,7 @@ export const useNetworkMonitor = () => {
             handleMessage({ type: "NETWORK_RESPONSE", data: entry.data });
           }
         });
-      } catch (error) {
+      } catch (_error) {
         // 忽略错误
       }
     }, 500);

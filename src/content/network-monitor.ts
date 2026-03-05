@@ -12,7 +12,7 @@
       // 通过 executeScript 从 MAIN world 读取数据
       // 注意：这里不能直接访问，需要通过其他方式
       // 实际上，我们需要让 MAIN world 的脚本通过 window.postMessage 发送数据
-    } catch (error) {
+    } catch (_error) {
       // 忽略错误
     }
   }, 500);
@@ -30,7 +30,7 @@
             data: event.data.data,
           })
           .catch(() => {});
-      } catch (error) {
+      } catch (_error) {
         // 扩展上下文已失效，忽略错误
         console.log("[Network Monitor Bridge] Extension context invalidated, stopping message forwarding");
       }

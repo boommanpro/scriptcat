@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Tabs, Button, Checkbox, Empty, Input, Badge } from "@arco-design/web-react";
 import type { NetworkRequest, ConsoleLog } from "@App/pkg/ai/types";
+import { useTranslation } from "react-i18next";
 
 interface MonitorPanelProps {
   isOpen: boolean;
@@ -41,6 +42,7 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
   isRecording,
   onToggleRecording,
 }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("network");
   const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
@@ -52,7 +54,6 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
   const selectedConsoleCount = consoleLogs.filter((l) => l.selected).length;
   const totalSelected = selectedNetworkCount + selectedConsoleCount;
 
-  // 统计
   const networkSuccess = networkRequests.filter((r) => r.status && r.status >= 200 && r.status < 300).length;
   const networkError = networkRequests.filter((r) => r.status && r.status >= 400).length;
   const networkPending = networkRequests.filter((r) => !r.status).length;
@@ -62,7 +63,6 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
   const consoleWarnCount = consoleLogs.filter((l) => l.level === "warn").length;
   const consoleErrorCount = consoleLogs.filter((l) => l.level === "error").length;
 
-  // 过滤
   const filteredNetworkRequests = networkRequests.filter((r) =>
     filterText
       ? r.url.toLowerCase().includes(filterText.toLowerCase()) ||
@@ -116,7 +116,7 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
       return (
         <span style={{ color: "#ff7d00", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
           <span className="monitor-status-dot pending" />
-          Pending
+          {"Pending"}
         </span>
       );
     }
@@ -155,12 +155,11 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
 
   return (
     <div className="monitor-sidebar">
-      {/* 头部 */}
       <div className="monitor-sidebar-header">
         <div className="monitor-header-title">
-          <span className="monitor-icon">🔍</span>
-          <span>开发者工具</span>
-          {isRecording && <span className="monitor-recording-badge">监控中</span>}
+          <span className="monitor-icon">{"🔍"}</span>
+          <span>{t("monitor.developer_tools")}</span>
+          {isRecording && <span className="monitor-recording-badge">{t("monitor.monitoring")}</span>}
         </div>
         <div className="monitor-header-actions">
           <Button
@@ -169,31 +168,29 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
             status={isRecording ? "danger" : undefined}
             onClick={onToggleRecording}
           >
-            {isRecording ? "⏹ 暂停监控" : "⏺ 开始监控"}
+            {isRecording ? `⏹ ${t("monitor.pause_monitor")}` : `⏺ ${t("monitor.start_monitor")}`}
           </Button>
           <Button size="mini" type="secondary" onClick={activeTab === "network" ? onClearNetwork : onClearConsole}>
-            🗑 清空
+            {`🗑 ${t("monitor.clear")}`}
           </Button>
           <button className="monitor-close-btn" onClick={onClose}>
-            ✕
+            {"✕"}
           </button>
         </div>
       </div>
 
-      {/* 标题 */}
       <div className="monitor-title-section">
-        <div className="monitor-title">开发者工具 - 网络 & 控制台监控</div>
+        <div className="monitor-title">{t("monitor.title")}</div>
       </div>
 
-      {/* Tabs */}
       <div className="monitor-tabs-section">
         <Tabs activeTab={activeTab} onChange={setActiveTab} size="small" type="line" className="monitor-tabs">
           <TabPane
             key="network"
             title={
               <span className="monitor-tab-title">
-                <span className="monitor-tab-icon">🌐</span>
-                网络监控
+                <span className="monitor-tab-icon">{"🌐"}</span>
+                {t("monitor.network_monitor")}
                 <Badge count={networkRequests.length} className="monitor-badge" />
               </span>
             }
@@ -202,8 +199,8 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
             key="console"
             title={
               <span className="monitor-tab-title">
-                <span className="monitor-tab-icon">📋</span>
-                控制台监控
+                <span className="monitor-tab-icon">{"📋"}</span>
+                {t("monitor.console_monitor")}
                 <Badge count={consoleLogs.length} className="monitor-badge" />
               </span>
             }
@@ -211,79 +208,80 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
         </Tabs>
       </div>
 
-      {/* 统计栏 */}
       <div className="monitor-stats-section">
         {activeTab === "network" ? (
           <>
             <Button size="mini" type="primary" className="monitor-test-btn">
-              🌐 测试网络请求
+              {`🌐 ${t("monitor.test_network")}`}
             </Button>
             <div className="monitor-stats">
               <span className="monitor-stat">
                 <span className="monitor-stat-dot" />
-                总计: {networkRequests.length}
+                {`${t("monitor.total")} ${networkRequests.length}`}
               </span>
               <span className="monitor-stat success">
                 <span className="monitor-stat-dot success" />
-                成功: {networkSuccess}
+                {`${t("monitor.success")} ${networkSuccess}`}
               </span>
               <span className="monitor-stat error">
                 <span className="monitor-stat-dot error" />
-                错误: {networkError}
+                {`${t("monitor.error")} ${networkError}`}
               </span>
               <span className="monitor-stat pending">
                 <span className="monitor-stat-dot pending" />
-                进行中: {networkPending}
+                {`${t("monitor.pending")} ${networkPending}`}
               </span>
             </div>
           </>
         ) : (
           <>
             <Button size="mini" type="primary" className="monitor-test-btn">
-              📋 测试控制台输出
+              {`📋 ${t("monitor.test_console")}`}
             </Button>
             <div className="monitor-stats">
               <span className="monitor-stat">
                 <span className="monitor-stat-dot" />
-                总计: {consoleLogs.length}
+                {`${t("monitor.total")} ${consoleLogs.length}`}
               </span>
               <span className="monitor-stat">
                 <span className="monitor-stat-dot log" />
-                日志: {consoleLogCount}
+                {`${t("monitor.log")} ${consoleLogCount}`}
               </span>
               <span className="monitor-stat info">
                 <span className="monitor-stat-dot info" />
-                信息: {consoleInfoCount}
+                {`${t("monitor.info")} ${consoleInfoCount}`}
               </span>
               <span className="monitor-stat warn">
                 <span className="monitor-stat-dot warn" />
-                警告: {consoleWarnCount}
+                {`${t("monitor.warn")} ${consoleWarnCount}`}
               </span>
               <span className="monitor-stat error">
                 <span className="monitor-stat-dot error" />
-                错误: {consoleErrorCount}
+                {`${t("monitor.error")} ${consoleErrorCount}`}
               </span>
             </div>
           </>
         )}
       </div>
 
-      {/* 过滤器 */}
       <div className="monitor-filter-section">
         <Input
           size="small"
-          placeholder={activeTab === "network" ? "🔍 过滤URL或方法..." : "🔍 过滤消息内容或来源..."}
+          placeholder={
+            activeTab === "network"
+              ? `🔍 ${t("monitor.filter_url_method")}`
+              : `🔍 ${t("monitor.filter_message_source")}`
+          }
           value={filterText}
           onChange={setFilterText}
           className="monitor-filter-input"
           allowClear
         />
         <select className="monitor-filter-select">
-          <option>所有状态</option>
+          <option>{t("monitor.all_status")}</option>
         </select>
       </div>
 
-      {/* 列表头部 */}
       <div className="monitor-list-header-bar">
         <Checkbox
           checked={
@@ -298,20 +296,19 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
           }
           onChange={(checked) => (activeTab === "network" ? onSelectAllNetwork(checked) : onSelectAllConsole(checked))}
         >
-          全选
+          {t("monitor.select_all")}
         </Checkbox>
         <Button size="mini" type="secondary" disabled={totalSelected === 0} onClick={onInsertSelected}>
-          ⬇ 导出选中 ({totalSelected})
+          {`⬇ ${t("monitor.export_selected")} (${totalSelected})`}
         </Button>
       </div>
 
-      {/* 列表内容 */}
       <div className="monitor-list-content">
         {activeTab === "network" && (
           <>
             {filteredNetworkRequests.length === 0 ? (
               <div className="monitor-empty">
-                <Empty description="暂无网络请求" />
+                <Empty description={t("monitor.no_network_requests")} />
               </div>
             ) : (
               filteredNetworkRequests.map((request) => (
@@ -332,40 +329,40 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
                     <span className="monitor-item-url" title={request.url}>
                       {request.url}
                     </span>
-                    <span className="monitor-item-type">fetch</span>
+                    <span className="monitor-item-type">{"fetch"}</span>
                     {onDoubleClickNetworkRequest && (
                       <Button
                         size="mini"
                         type="text"
                         className="monitor-item-insert-btn"
                         onClick={() => onDoubleClickNetworkRequest(request)}
-                        title="插入到聊天"
+                        title={t("monitor.insert_to_chat")}
                       >
-                        ⬇
+                        {"⬇"}
                       </Button>
                     )}
                   </div>
                   <div className="monitor-item-row secondary">
                     <span className="monitor-item-time">{formatTime(request.timestamp)}</span>
                     {formatStatus(request.status)}
-                    <span className="monitor-item-duration">{request.time || "0"}ms</span>
-                    <span className="monitor-item-size">0</span>
+                    <span className="monitor-item-duration">{`${request.time || "0"}ms`}</span>
+                    <span className="monitor-item-size">{"0"}</span>
                   </div>
                   {expandedRequest === request.id && (
                     <div className="monitor-item-details">
                       <div className="monitor-detail-row">
-                        <span className="monitor-detail-label">URL:</span>
+                        <span className="monitor-detail-label">{t("monitor.url")}</span>
                         <span className="monitor-detail-value">{request.url}</span>
                       </div>
                       {request.requestHeaders && Object.keys(request.requestHeaders).length > 0 && (
                         <div className="monitor-detail-row">
-                          <span className="monitor-detail-label">请求头:</span>
+                          <span className="monitor-detail-label">{t("monitor.request_headers")}</span>
                           <pre className="monitor-detail-code">{JSON.stringify(request.requestHeaders, null, 2)}</pre>
                         </div>
                       )}
                       {request.responseHeaders && Object.keys(request.responseHeaders).length > 0 && (
                         <div className="monitor-detail-row">
-                          <span className="monitor-detail-label">响应头:</span>
+                          <span className="monitor-detail-label">{t("monitor.response_headers")}</span>
                           <pre className="monitor-detail-code">{JSON.stringify(request.responseHeaders, null, 2)}</pre>
                         </div>
                       )}
@@ -381,7 +378,7 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
           <>
             {filteredConsoleLogs.length === 0 ? (
               <div className="monitor-empty">
-                <Empty description="暂无控制台日志" />
+                <Empty description={t("monitor.no_console_logs")} />
               </div>
             ) : (
               filteredConsoleLogs.map((log) => (
@@ -420,9 +417,9 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
                         type="text"
                         className="monitor-item-insert-btn"
                         onClick={() => onDoubleClickConsoleLog(log)}
-                        title="插入到聊天"
+                        title={t("monitor.insert_to_chat")}
                       >
-                        ⬇
+                        {"⬇"}
                       </Button>
                     )}
                   </div>
@@ -430,19 +427,19 @@ export const MonitorPanel: React.FC<MonitorPanelProps> = ({
                     <span className="monitor-item-time">{formatTime(log.timestamp)}</span>
                     {log.source && (
                       <span className="monitor-log-source">
-                        📄 {log.source} 行: {log.line}, 列: {log.column}
+                        {`📄 ${log.source} ${t("monitor.line")} ${log.line}, ${t("monitor.column")} ${log.column}`}
                       </span>
                     )}
                   </div>
                   {expandedLog === log.id && (
                     <div className="monitor-item-details">
                       <div className="monitor-detail-row">
-                        <span className="monitor-detail-label">消息:</span>
+                        <span className="monitor-detail-label">{t("monitor.message")}</span>
                         <pre className="monitor-detail-code">{log.message}</pre>
                       </div>
                       {log.stack && (
                         <div className="monitor-detail-row">
-                          <span className="monitor-detail-label">堆栈:</span>
+                          <span className="monitor-detail-label">{t("monitor.stack")}</span>
                           <pre className="monitor-detail-code">{log.stack}</pre>
                         </div>
                       )}

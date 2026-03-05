@@ -244,7 +244,7 @@ export const useConsoleMonitor = () => {
             handleMessage({ type: "CONSOLE_LOG", data: entry.data });
           }
         });
-      } catch (error) {
+      } catch (_error) {
         // 忽略错误
       }
     }, 500);
