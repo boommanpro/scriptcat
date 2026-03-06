@@ -2,6 +2,7 @@ package org.scriptcat.cloudserver.client.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.scriptcat.cloudserver.client.model.ClientInfo;
+import org.scriptcat.cloudserver.controller.ManagementWebSocketController;
 import org.scriptcat.cloudserver.script.service.ScriptRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,9 @@ public class ClientService {
     @Autowired
     private ScriptRegistry scriptRegistry;
     
+    @Autowired
+    private ManagementWebSocketController managementController;
+    
     public void registerClient(String username, String clientId, Map<String, Object> data) {
         ClientInfo clientInfo = ClientInfo.builder()
             .clientId(clientId)
@@ -31,6 +35,7 @@ public class ClientService {
             .build();
         
         clientRegistry.register(username, clientId, clientInfo);
+        managementController.notifyClientConnected(clientInfo);
         log.info("Client registered: {} - {}", username, clientId);
     }
     
@@ -41,6 +46,7 @@ public class ClientService {
     public void disconnectClient(String username, String clientId) {
         clientRegistry.unregister(username, clientId);
         scriptRegistry.removeByClientId(username, clientId);
+        managementController.notifyClientDisconnected(username, clientId);
         log.info("Client disconnected: {} - {}", username, clientId);
     }
     

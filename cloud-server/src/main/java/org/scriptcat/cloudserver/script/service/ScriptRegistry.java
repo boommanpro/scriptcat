@@ -51,4 +51,8 @@ public class ScriptRegistry {
             log.info("Removed scripts for client: {} - {}", username, clientId);
         }
     }
+    
+    public ConcurrentHashMap<String, ConcurrentHashMap<String, ScriptInfo>> getAllScripts() {
+        return scripts;
+    }
 }

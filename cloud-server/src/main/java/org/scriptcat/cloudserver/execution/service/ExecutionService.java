@@ -5,14 +5,15 @@ import org.scriptcat.cloudserver.client.model.ClientInfo;
 import org.scriptcat.cloudserver.client.service.ClientRegistry;
 import org.scriptcat.cloudserver.common.exception.BusinessException;
 import org.scriptcat.cloudserver.common.util.IdGenerator;
+import org.scriptcat.cloudserver.controller.ManagementWebSocketController;
 import org.scriptcat.cloudserver.execution.model.ExecutionStatus;
 import org.scriptcat.cloudserver.execution.model.ExecutionTask;
 import org.scriptcat.cloudserver.script.model.ScriptInfo;
 import org.scriptcat.cloudserver.script.service.ScriptRegistry;
+import org.scriptcat.cloudserver.websocket.handler.RawWebSocketHandler;
 import org.scriptcat.cloudserver.websocket.message.Message;
-import org.scriptcat.cloudserver.websocket.message.MessageType;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -32,7 +33,11 @@ public class ExecutionService {
     private ClientRegistry clientRegistry;
     
     @Autowired
-    private SimpMessagingTemplate messagingTemplate;
+    @Lazy
+    private RawWebSocketHandler webSocketHandler;
+    
+    @Autowired
+    private ManagementWebSocketController managementController;
     
     public ExecutionTask executeScript(String username, String scriptId, Map<String, Object> params) {
         ScriptInfo script = scriptRegistry.getScript(username, scriptId);
@@ -56,10 +61,11 @@ public class ExecutionService {
             .build();
         
         executionRegistry.register(task);
+        managementController.notifyTaskCreated(task);
         
         Message message = Message.builder()
             .id(IdGenerator.generateMessageId())
-            .type(MessageType.EXECUTE)
+            .type("EXECUTE")
             .action("script.execute")
             .timestamp(System.currentTimeMillis())
             .username(username)
@@ -71,13 +77,14 @@ public class ExecutionService {
             ))
             .build();
         
-        messagingTemplate.convertAndSendToUser(
-            username, 
-            "/queue/execute", 
-            message
-        );
+        try {
+            webSocketHandler.sendMessageToClient(username, script.getClientId(), message);
+            log.info("Execution task created: {}, script: {}", task.getTaskId(), scriptId);
+        } catch (Exception e) {
+            log.error("Failed to send execution message: {}", e.getMessage(), e);
+            throw new BusinessException("Failed to send execution message: " + e.getMessage());
+        }
         
-        log.info("Execution task created: {}, script: {}", task.getTaskId(), scriptId);
         return task;
     }
     
@@ -89,6 +96,11 @@ public class ExecutionService {
         
         ExecutionStatus status = success ? ExecutionStatus.SUCCESS : ExecutionStatus.FAILED;
         executionRegistry.update(taskId, status, result, error);
+        
+        ExecutionTask task = executionRegistry.get(taskId);
+        if (task != null) {
+            managementController.notifyTaskUpdated(task);
+        }
     }
     
     public ExecutionTask getTask(String taskId) {

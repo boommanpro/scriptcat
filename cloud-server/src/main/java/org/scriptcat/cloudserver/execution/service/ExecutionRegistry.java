@@ -8,7 +8,9 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -65,5 +67,42 @@ public class ExecutionRegistry {
             .sorted((t1, t2) -> t2.getCreatedAt().compareTo(t1.getCreatedAt()))
             .limit(limit)
             .collect(Collectors.toList());
+    }
+    
+    public Map<String, Object> getTaskStats() {
+        int total = tasks.size();
+        int pending = 0;
+        int running = 0;
+        int success = 0;
+        int failed = 0;
+        
+        for (ExecutionTask task : tasks.values()) {
+            switch (task.getStatus()) {
+                case PENDING:
+                    pending++;
+                    break;
+                case RUNNING:
+                    running++;
+                    break;
+                case SUCCESS:
+                    success++;
+                    break;
+                case FAILED:
+                    failed++;
+                    break;
+            }
+        }
+        
+        double successRate = total > 0 ? (double) success / total * 100 : 0;
+        
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("total", total);
+        stats.put("pending", pending);
+        stats.put("running", running);
+        stats.put("success", success);
+        stats.put("failed", failed);
+        stats.put("successRate", Math.round(successRate * 100.0) / 100.0);
+        
+        return stats;
     }
 }

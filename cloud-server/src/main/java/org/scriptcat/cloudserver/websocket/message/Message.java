@@ -14,7 +14,7 @@ import java.util.Map;
 public class Message {
     
     private String id;
-    private MessageType type;
+    private String type;
     private String action;
     private Long timestamp;
     private String username;
