@@ -353,11 +353,18 @@ export class CloudWebSocketClient {
     }
 
     async syncScripts(): Promise<void> {
+        console.log("[CloudWS] syncScripts called");
         const scripts = await this.getLocalScripts();
+        console.log("[CloudWS] getLocalScripts returned:", scripts.length, "scripts");
+        console.log("[CloudWS] scriptConfigs size:", this.scriptConfigs.size);
+
         const enabledScripts = scripts.filter((script) => {
             const config = this.scriptConfigs.get(script.id);
+            console.log("[CloudWS] Script:", script.id, script.name, "config:", config);
             return config === undefined || config.enabled;
         });
+
+        console.log("[CloudWS] enabledScripts:", enabledScripts.length);
 
         const message: CloudMessage = {
             id: this.generateMessageId(),

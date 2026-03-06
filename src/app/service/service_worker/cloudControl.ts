@@ -108,7 +108,10 @@ export class CloudControlBackgroundService {
 
     private async handleGetScripts(sendResponse: Function): Promise<void> {
         try {
+            console.log("[CloudControl] handleGetScripts called");
             const scripts = await this.automationScriptDAO.getAllScripts();
+            console.log("[CloudControl] getAllScripts returned:", scripts.length, "scripts");
+
             const scriptConfigs = scripts.map((script) => ({
                 id: script.id,
                 key: script.key,
@@ -125,8 +128,10 @@ export class CloudControlBackgroundService {
                     cloudcat: true,
                 },
             }));
+            console.log("[CloudControl] Sending scriptConfigs:", scriptConfigs.length);
             sendResponse({ scripts: scriptConfigs });
         } catch (error: any) {
+            console.error("[CloudControl] handleGetScripts error:", error);
             sendResponse({ scripts: [], error: error.message });
         }
     }
