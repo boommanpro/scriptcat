@@ -11,6 +11,7 @@
 ### 1.1 项目架构设计
 
 #### 1.1.1 系统架构（简化版）
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     Chrome Extension (客户端)                 │
@@ -50,6 +51,7 @@
 #### 1.1.2 核心设计原则
 
 **MVP版本特点:**
+
 - ✅ 纯内存存储，无数据库依赖
 - ✅ 单机部署，无集群考虑
 - ✅ 简化认证，user作为唯一标识
@@ -57,6 +59,7 @@
 - ✅ 快速启动，零配置
 
 **数据存储策略:**
+
 ```java
 // 用户注册表: Map<username, UserSession>
 ConcurrentHashMap<String, UserSession> userRegistry;
@@ -79,7 +82,6 @@ ConcurrentHashMap<String, ExecutionTask> executionRegistry;
    - 连接生命周期管理
    - 消息编解码
    - 心跳检测
-   
 2. **client-module**: 客户端管理模块
    - 客户端注册与发现
    - 客户端状态管理
@@ -98,6 +100,7 @@ ConcurrentHashMap<String, ExecutionTask> executionRegistry;
 ### 1.2 技术选型方案
 
 #### 1.2.1 核心技术栈（精简版）
+
 - **语言**: Java 17+
 - **框架**: Spring Boot 3.x
 - **WebSocket**: Spring WebSocket + STOMP
@@ -106,6 +109,7 @@ ConcurrentHashMap<String, ExecutionTask> executionRegistry;
 - **测试**: JUnit 5, Mockito
 
 #### 1.2.2 依赖库（精简版）
+
 ```xml
 <dependencies>
     <!-- Spring Boot Starter -->
@@ -113,36 +117,36 @@ ConcurrentHashMap<String, ExecutionTask> executionRegistry;
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-websocket</artifactId>
     </dependency>
-    
+
     <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
-    
+
     <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-validation</artifactId>
     </dependency>
-    
+
     <!-- Lombok -->
     <dependency>
         <groupId>org.projectlombok</groupId>
         <artifactId>lombok</artifactId>
         <optional>true</optional>
     </dependency>
-    
+
     <!-- JSON Processing -->
     <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
     </dependency>
-    
+
     <!-- Utilities -->
     <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-lang3</artifactId>
     </dependency>
-    
+
     <!-- Test -->
     <dependency>
         <groupId>org.springframework.boot</groupId>
@@ -227,12 +231,14 @@ cloud-server/
 ### 1.4 开发规范
 
 #### 1.4.1 代码规范
+
 - 遵循Google Java Style Guide
 - 使用Lombok减少样板代码
 - 所有public方法必须有Javadoc注释
 - 使用SLF4J进行日志记录
 
 #### 1.4.2 命名规范
+
 - 类名: PascalCase (例: `ClientRegistry`)
 - 方法名: camelCase (例: `registerClient`)
 - 常量: UPPER_SNAKE_CASE (例: `MAX_RETRY_COUNT`)
@@ -251,13 +257,13 @@ cloud-server/
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
-    
+
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*");
     }
-    
+
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         registry.enableSimpleBroker("/topic", "/queue");
@@ -268,36 +274,37 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 ```
 
 **会话管理器:**
+
 ```java
 @Component
 @Slf4j
 public class ClientRegistry {
-    
+
     private final ConcurrentHashMap<String, ClientSession> sessions = new ConcurrentHashMap<>();
-    
+
     public void register(String username, String clientId, ClientSession session) {
         String key = buildKey(username, clientId);
         sessions.put(key, session);
         log.info("Client registered: {}", key);
     }
-    
+
     public void unregister(String username, String clientId) {
         String key = buildKey(username, clientId);
         sessions.remove(key);
         log.info("Client unregistered: {}", key);
     }
-    
+
     public ClientSession get(String username, String clientId) {
         return sessions.get(buildKey(username, clientId));
     }
-    
+
     public List<ClientSession> getByUsername(String username) {
         return sessions.entrySet().stream()
             .filter(e -> e.getKey().startsWith(username + ":"))
             .map(Map.Entry::getValue)
             .collect(Collectors.toList());
     }
-    
+
     private String buildKey(String username, String clientId) {
         return username + ":" + clientId;
     }
@@ -305,6 +312,7 @@ public class ClientRegistry {
 ```
 
 **心跳检测:**
+
 - 客户端每30秒发送PING
 - 服务端响应PONG
 - 超时90秒未收到心跳则断开连接
@@ -312,37 +320,39 @@ public class ClientRegistry {
 #### 2.1.2 认证流程（简化版）
 
 **认证机制:**
+
 ```java
 @Component
 public class AuthChannelInterceptor implements ChannelInterceptor {
-    
+
     @Autowired
     private UserRegistry userRegistry;
-    
+
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
-        
+
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
             String username = accessor.getFirstNativeHeader("username");
-            
+
             if (StringUtils.isEmpty(username)) {
                 throw new IllegalArgumentException("Username is required");
             }
-            
+
             // 创建用户会话（无需密码验证）
             UserSession session = new UserSession(username);
             userRegistry.register(username, session);
-            
+
             accessor.setUser(new UserPrincipal(username));
         }
-        
+
         return message;
     }
 }
 ```
 
 **用户会话:**
+
 ```java
 @Data
 @AllArgsConstructor
@@ -350,7 +360,7 @@ public class UserSession {
     private String username;
     private LocalDateTime createdAt;
     private Set<String> clientIds = ConcurrentHashMap.newKeySet();
-    
+
     public UserSession(String username) {
         this.username = username;
         this.createdAt = LocalDateTime.now();
@@ -361,6 +371,7 @@ public class UserSession {
 #### 2.1.3 消息处理逻辑
 
 **消息格式定义:**
+
 ```java
 @Data
 @Builder
@@ -387,49 +398,50 @@ public enum MessageType {
 ```
 
 **消息处理器:**
+
 ```java
 @Controller
 @Slf4j
 public class WebSocketMessageHandler {
-    
+
     @Autowired
     private ClientService clientService;
-    
+
     @Autowired
     private ScriptService scriptService;
-    
+
     @Autowired
     private ExecutionService executionService;
-    
+
     @MessageMapping("/auth")
     @SendToUser("/queue/auth")
     public ApiResponse handleAuth(@Payload Message message, Principal principal) {
         String username = principal.getName();
         log.info("Auth request from: {}", username);
-        
+
         // 注册客户端
         clientService.registerClient(username, message.getClientId(), message.getData());
-        
+
         return ApiResponse.success("Authentication successful");
     }
-    
+
     @MessageMapping("/script/sync")
     @SendToUser("/queue/script/sync")
     public ApiResponse handleScriptSync(@Payload Message message, Principal principal) {
         String username = principal.getName();
         log.info("Script sync from: {}, client: {}", username, message.getClientId());
-        
+
         // 同步脚本列表
         scriptService.syncScripts(username, message.getClientId(), message.getData());
-        
+
         return ApiResponse.success("Scripts synced successfully");
     }
-    
+
     @MessageMapping("/execution/result")
     public void handleExecutionResult(@Payload Message message, Principal principal) {
         String username = principal.getName();
         log.info("Execution result from: {}, task: {}", username, message.getData().get("taskId"));
-        
+
         // 更新执行结果
         executionService.updateResult(username, message.getData());
     }
@@ -441,6 +453,7 @@ public class WebSocketMessageHandler {
 #### 2.2.1 客户端注册
 
 **客户端信息:**
+
 ```java
 @Data
 @Builder
@@ -453,7 +466,7 @@ public class ClientInfo {
     private LocalDateTime connectedAt;
     private LocalDateTime lastHeartbeat;
     private Map<String, Object> metadata;
-    
+
     public enum ClientStatus {
         ONLINE, OFFLINE
     }
@@ -461,17 +474,18 @@ public class ClientInfo {
 ```
 
 **客户端服务:**
+
 ```java
 @Service
 @Slf4j
 public class ClientService {
-    
+
     @Autowired
     private ClientRegistry clientRegistry;
-    
+
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
-    
+
     public void registerClient(String username, String clientId, Map<String, Object> data) {
         ClientInfo clientInfo = ClientInfo.builder()
             .clientId(clientId)
@@ -481,15 +495,15 @@ public class ClientService {
             .lastHeartbeat(LocalDateTime.now())
             .metadata(data)
             .build();
-        
+
         clientRegistry.register(username, clientId, clientInfo);
         log.info("Client registered: {} - {}", username, clientId);
     }
-    
+
     public List<ClientInfo> getClients(String username) {
         return clientRegistry.getByUsername(username);
     }
-    
+
     public void disconnectClient(String username, String clientId) {
         clientRegistry.unregister(username, clientId);
         log.info("Client disconnected: {} - {}", username, clientId);
@@ -502,6 +516,7 @@ public class ClientService {
 #### 2.3.1 脚本信息存储
 
 **脚本信息（不含code）:**
+
 ```java
 @Data
 @Builder
@@ -519,35 +534,36 @@ public class ScriptInfo {
 ```
 
 **脚本注册表:**
+
 ```java
 @Component
 @Slf4j
 public class ScriptRegistry {
-    
-    private final ConcurrentHashMap<String, ConcurrentHashMap<String, ScriptInfo>> scripts = 
+
+    private final ConcurrentHashMap<String, ConcurrentHashMap<String, ScriptInfo>> scripts =
         new ConcurrentHashMap<>();
-    
+
     public void register(String username, String clientId, List<ScriptInfo> scriptList) {
-        ConcurrentHashMap<String, ScriptInfo> userScripts = 
+        ConcurrentHashMap<String, ScriptInfo> userScripts =
             scripts.computeIfAbsent(username, k -> new ConcurrentHashMap<>());
-        
+
         for (ScriptInfo script : scriptList) {
             script.setClientId(clientId);
             script.setUsername(username);
             script.setSyncedAt(LocalDateTime.now());
             userScripts.put(script.getScriptId(), script);
         }
-        
-        log.info("Registered {} scripts for user: {}, client: {}", 
+
+        log.info("Registered {} scripts for user: {}, client: {}",
             scriptList.size(), username, clientId);
     }
-    
+
     public List<ScriptInfo> getScripts(String username) {
         ConcurrentHashMap<String, ScriptInfo> userScripts = scripts.get(username);
-        return userScripts == null ? Collections.emptyList() : 
+        return userScripts == null ? Collections.emptyList() :
             new ArrayList<>(userScripts.values());
     }
-    
+
     public ScriptInfo getScript(String username, String scriptId) {
         ConcurrentHashMap<String, ScriptInfo> userScripts = scripts.get(username);
         return userScripts == null ? null : userScripts.get(scriptId);
@@ -556,28 +572,29 @@ public class ScriptRegistry {
 ```
 
 **脚本服务:**
+
 ```java
 @Service
 @Slf4j
 public class ScriptService {
-    
+
     @Autowired
     private ScriptRegistry scriptRegistry;
-    
+
     public void syncScripts(String username, String clientId, Map<String, Object> data) {
         List<Map<String, Object>> scriptList = (List<Map<String, Object>>) data.get("scripts");
-        
+
         List<ScriptInfo> scripts = scriptList.stream()
             .map(this::mapToScriptInfo)
             .collect(Collectors.toList());
-        
+
         scriptRegistry.register(username, clientId, scripts);
     }
-    
+
     public List<ScriptInfo> getScripts(String username) {
         return scriptRegistry.getScripts(username);
     }
-    
+
     private ScriptInfo mapToScriptInfo(Map<String, Object> map) {
         return ScriptInfo.builder()
             .scriptId((String) map.get("id"))
@@ -594,6 +611,7 @@ public class ScriptService {
 #### 2.4.1 执行任务管理
 
 **执行任务:**
+
 ```java
 @Data
 @Builder
@@ -624,22 +642,23 @@ public enum ExecutionStatus {
 ```
 
 **执行注册表:**
+
 ```java
 @Component
 @Slf4j
 public class ExecutionRegistry {
-    
+
     private final ConcurrentHashMap<String, ExecutionTask> tasks = new ConcurrentHashMap<>();
-    
+
     public void register(ExecutionTask task) {
         tasks.put(task.getTaskId(), task);
         log.info("Task registered: {}", task.getTaskId());
     }
-    
+
     public ExecutionTask get(String taskId) {
         return tasks.get(taskId);
     }
-    
+
     public void update(String taskId, ExecutionStatus status, Object result, String error) {
         ExecutionTask task = tasks.get(taskId);
         if (task != null) {
@@ -659,34 +678,35 @@ public class ExecutionRegistry {
 ```
 
 **执行服务:**
+
 ```java
 @Service
 @Slf4j
 public class ExecutionService {
-    
+
     @Autowired
     private ExecutionRegistry executionRegistry;
-    
+
     @Autowired
     private ScriptRegistry scriptRegistry;
-    
+
     @Autowired
     private ClientRegistry clientRegistry;
-    
+
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
-    
+
     public ExecutionTask executeScript(String username, String scriptId, Map<String, Object> params) {
         ScriptInfo script = scriptRegistry.getScript(username, scriptId);
         if (script == null) {
             throw new BusinessException("Script not found: " + scriptId);
         }
-        
+
         ClientInfo client = clientRegistry.get(username, script.getClientId());
         if (client == null || client.getStatus() != ClientInfo.ClientStatus.ONLINE) {
             throw new BusinessException("Client offline: " + script.getClientId());
         }
-        
+
         ExecutionTask task = ExecutionTask.builder()
             .taskId(generateTaskId())
             .scriptId(scriptId)
@@ -696,9 +716,9 @@ public class ExecutionService {
             .params(params)
             .createdAt(LocalDateTime.now())
             .build();
-        
+
         executionRegistry.register(task);
-        
+
         Message message = Message.builder()
             .id(generateMessageId())
             .type(MessageType.EXECUTE)
@@ -712,38 +732,38 @@ public class ExecutionService {
                 "params", params
             ))
             .build();
-        
+
         messagingTemplate.convertAndSendToUser(
-            username, 
-            "/queue/execute", 
+            username,
+            "/queue/execute",
             message
         );
-        
+
         log.info("Execution task created: {}, script: {}", task.getTaskId(), scriptId);
         return task;
     }
-    
+
     public void updateResult(String username, Map<String, Object> data) {
         String taskId = (String) data.get("taskId");
         Boolean success = (Boolean) data.get("success");
         Object result = data.get("result");
         String error = (String) data.get("error");
-        
+
         ExecutionStatus status = success ? ExecutionStatus.SUCCESS : ExecutionStatus.FAILED;
         executionRegistry.update(taskId, status, result, error);
     }
-    
+
     public ExecutionTask getTask(String taskId) {
         return executionRegistry.get(taskId);
     }
-    
+
     private String generateTaskId() {
-        return "task-" + System.currentTimeMillis() + "-" + 
+        return "task-" + System.currentTimeMillis() + "-" +
             UUID.randomUUID().toString().substring(0, 8);
     }
-    
+
     private String generateMessageId() {
-        return "msg-" + System.currentTimeMillis() + "-" + 
+        return "msg-" + System.currentTimeMillis() + "-" +
             UUID.randomUUID().toString().substring(0, 8);
     }
 }
@@ -758,6 +778,7 @@ public class ExecutionService {
 #### 3.1.1 消息格式标准
 
 **基础消息结构:**
+
 ```json
 {
   "id": "msg-123456",
@@ -775,6 +796,7 @@ public class ExecutionService {
 #### 3.1.2 消息类型定义
 
 **1. 认证消息 (AUTH)**
+
 ```json
 // 客户端 → 服务端
 {
@@ -801,6 +823,7 @@ public class ExecutionService {
 ```
 
 **2. 脚本列表消息 (SCRIPT_LIST)**
+
 ```json
 // 客户端 → 服务端
 {
@@ -841,6 +864,7 @@ public class ExecutionService {
 ```
 
 **3. 执行消息 (EXECUTE)**
+
 ```json
 // 服务端 → 客户端
 {
@@ -873,6 +897,7 @@ public class ExecutionService {
 ```
 
 **4. 心跳消息 (HEARTBEAT)**
+
 ```json
 // 客户端 → 服务端
 {
@@ -894,6 +919,7 @@ public class ExecutionService {
 ```
 
 **5. 错误消息 (ERROR)**
+
 ```json
 {
   "type": "ERROR",
@@ -911,6 +937,7 @@ public class ExecutionService {
 #### 3.2.1 客户端管理接口
 
 **获取客户端列表**
+
 ```
 GET /api/clients?username={username}
 
@@ -937,6 +964,7 @@ Response:
 #### 3.2.2 脚本管理接口
 
 **获取脚本列表**
+
 ```
 GET /api/scripts?username={username}
 
@@ -958,6 +986,7 @@ Response:
 ```
 
 **执行脚本**
+
 ```
 POST /api/scripts/{scriptId}/execute
 Content-Type: application/json
@@ -984,6 +1013,7 @@ Response:
 #### 3.2.3 执行任务接口
 
 **获取任务状态**
+
 ```
 GET /api/tasks/{taskId}?username={username}
 
@@ -1009,24 +1039,25 @@ Response:
 ### 4.1 单元测试
 
 **客户端服务测试:**
+
 ```java
 @SpringBootTest
 class ClientServiceTest {
-    
+
     @Autowired
     private ClientService clientService;
-    
+
     @Autowired
     private ClientRegistry clientRegistry;
-    
+
     @Test
     void shouldRegisterClientSuccessfully() {
         String username = "test@example.com";
         String clientId = "client-123";
         Map<String, Object> data = Map.of("version", "1.0.0");
-        
+
         clientService.registerClient(username, clientId, data);
-        
+
         ClientInfo client = clientRegistry.get(username, clientId);
         assertNotNull(client);
         assertEquals(clientId, client.getClientId());
@@ -1036,44 +1067,45 @@ class ClientServiceTest {
 ```
 
 **执行服务测试:**
+
 ```java
 @SpringBootTest
 class ExecutionServiceTest {
-    
+
     @Autowired
     private ExecutionService executionService;
-    
+
     @Autowired
     private ScriptRegistry scriptRegistry;
-    
+
     @Autowired
     private ClientRegistry clientRegistry;
-    
+
     @Test
     void shouldCreateExecutionTask() {
         String username = "test@example.com";
         String clientId = "client-123";
         String scriptId = "script-1";
-        
+
         // 准备数据
-        clientRegistry.register(username, clientId, 
+        clientRegistry.register(username, clientId,
             ClientInfo.builder()
                 .clientId(clientId)
                 .username(username)
                 .status(ClientInfo.ClientStatus.ONLINE)
                 .build()
         );
-        
-        scriptRegistry.register(username, clientId, 
+
+        scriptRegistry.register(username, clientId,
             List.of(ScriptInfo.builder()
                 .scriptId(scriptId)
                 .name("Test Script")
                 .build())
         );
-        
+
         // 执行测试
         ExecutionTask task = executionService.executeScript(username, scriptId, Map.of());
-        
+
         assertNotNull(task);
         assertEquals(scriptId, task.getScriptId());
         assertEquals(ExecutionStatus.PENDING, task.getStatus());
@@ -1084,31 +1116,32 @@ class ExecutionServiceTest {
 ### 4.2 集成测试
 
 **WebSocket集成测试:**
+
 ```java
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class WebSocketIntegrationTest {
-    
+
     @Autowired
     private TestRestTemplate restTemplate;
-    
+
     private WebSocketStompClient stompClient;
-    
+
     @BeforeEach
     void setup() {
         stompClient = new WebSocketStompClient(new SockJsClient(
             Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()))
         ));
     }
-    
+
     @Test
     void shouldConnectAndAuthenticate() throws Exception {
         String url = "ws://localhost:" + port + "/ws";
-        
+
         StompHeaders headers = new StompHeaders();
         headers.put("username", Collections.singletonList("test@example.com"));
-        
+
         StompSession session = stompClient.connect(url, headers, new StompSessionHandlerAdapter() {}).get();
-        
+
         assertThat(session.isConnected()).isTrue();
     }
 }
@@ -1121,35 +1154,44 @@ class WebSocketIntegrationTest {
 ### 5.1 API文档
 
 **WebSocket协议文档:**
+
 ```markdown
 # WebSocket协议文档
 
 ## 连接地址
+
 ws://hostname:8080/ws
 
 ## 认证
+
 连接时需要在header中携带:
+
 - username: 用户名（必填）
 
 ## 消息格式
+
 ...
 
 ## 消息类型
+
 ...
 ```
 
 ### 5.2 部署文档
 
 **环境要求:**
+
 - JDK 17+
 - 2GB+ RAM
 
 **启动命令:**
+
 ```bash
 java -jar scriptcat-cloud-server.jar
 ```
 
 **配置文件:**
+
 ```yaml
 server:
   port: 8080
@@ -1172,6 +1214,7 @@ logging:
 #### 6.1.1 云控管理连接
 
 **页面结构:**
+
 ```typescript
 // src/pages/options/routes/CloudControl/index.tsx
 
@@ -1185,11 +1228,11 @@ interface ConnectionState {
 export function CloudControl() {
   const [connectionState, setConnectionState] = useState<ConnectionState>({
     isConnected: false,
-    serverUrl: 'ws://localhost:8080/ws',
-    username: '',
-    clients: []
+    serverUrl: "ws://localhost:8080/ws",
+    username: "",
+    clients: [],
   });
-  
+
   // 组件实现
 }
 ```
@@ -1197,6 +1240,7 @@ export function CloudControl() {
 #### 6.1.2 功能模块
 
 **1. 连接配置**
+
 ```typescript
 interface ConnectionConfig {
   serverUrl: string;
@@ -1210,17 +1254,17 @@ function ConnectionConfigForm({ onConnect }: { onConnect: (config: ConnectionCon
     username: '',
     autoReconnect: true
   });
-  
+
   return (
     <Form layout="vertical">
       <Form.Item label="服务器地址">
-        <Input 
+        <Input
           value={config.serverUrl}
           onChange={(e) => setConfig({...config, serverUrl: e.target.value})}
         />
       </Form.Item>
       <Form.Item label="用户名">
-        <Input 
+        <Input
           value={config.username}
           onChange={(e) => setConfig({...config, username: e.target.value})}
         />
@@ -1234,14 +1278,15 @@ function ConnectionConfigForm({ onConnect }: { onConnect: (config: ConnectionCon
 ```
 
 **2. 客户端列表**
+
 ```typescript
 function ClientList({ clients }: { clients: Client[] }) {
   return (
     <Table dataSource={clients} rowKey="clientId">
       <Column title="客户端ID" dataIndex="clientId" key="clientId" />
-      <Column 
-        title="状态" 
-        dataIndex="status" 
+      <Column
+        title="状态"
+        dataIndex="status"
         key="status"
         render={(status) => (
           <Tag color={status === 'ONLINE' ? 'green' : 'red'}>
@@ -1256,10 +1301,11 @@ function ClientList({ clients }: { clients: Client[] }) {
 ```
 
 **3. 脚本管理**
+
 ```typescript
 function ScriptManagement({ username }: { username: string }) {
   const [scripts, setScripts] = useState<Script[]>([]);
-  
+
   const handleExecute = async (scriptId: string) => {
     try {
       const result = await executeScript(username, scriptId);
@@ -1268,13 +1314,13 @@ function ScriptManagement({ username }: { username: string }) {
       message.error('脚本执行失败');
     }
   };
-  
+
   return (
     <Table dataSource={scripts} rowKey="scriptId">
       <Column title="脚本名称" dataIndex="name" key="name" />
       <Column title="版本" dataIndex="version" key="version" />
-      <Column 
-        title="操作" 
+      <Column
+        title="操作"
         key="action"
         render={(_, script) => (
           <Button size="small" onClick={() => handleExecute(script.scriptId)}>
@@ -1299,32 +1345,32 @@ export class CloudWebSocketClient {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectInterval = 5000;
-  
+
   constructor(private config: ConnectionConfig) {}
-  
+
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
         this.socket = new WebSocket(this.config.serverUrl);
-        
+
         this.socket.onopen = () => {
-          console.log('[CloudWS] Connected to server');
+          console.log("[CloudWS] Connected to server");
           this.reconnectAttempts = 0;
           this.authenticate();
           resolve();
         };
-        
+
         this.socket.onmessage = (event) => {
           this.handleMessage(JSON.parse(event.data));
         };
-        
+
         this.socket.onerror = (error) => {
-          console.error('[CloudWS] WebSocket error:', error);
+          console.error("[CloudWS] WebSocket error:", error);
           reject(error);
         };
-        
+
         this.socket.onclose = () => {
-          console.log('[CloudWS] Connection closed');
+          console.log("[CloudWS] Connection closed");
           this.handleDisconnect();
         };
       } catch (error) {
@@ -1332,102 +1378,104 @@ export class CloudWebSocketClient {
       }
     });
   }
-  
+
   private authenticate(): void {
     this.send({
-      type: 'AUTH',
-      action: 'auth.login',
+      type: "AUTH",
+      action: "auth.login",
       username: this.config.username,
       clientId: this.getClientId(),
-      data: this.getClientInfo()
+      data: this.getClientInfo(),
     });
   }
-  
+
   send(message: Message): void {
     if (this.socket?.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({
-        ...message,
-        id: this.generateMessageId(),
-        timestamp: Date.now()
-      }));
+      this.socket.send(
+        JSON.stringify({
+          ...message,
+          id: this.generateMessageId(),
+          timestamp: Date.now(),
+        })
+      );
     }
   }
-  
+
   private handleMessage(message: Message): void {
-    console.log('[CloudWS] Received message:', message);
-    
+    console.log("[CloudWS] Received message:", message);
+
     switch (message.type) {
-      case 'AUTH':
+      case "AUTH":
         this.handleAuthResponse(message.data);
         break;
-      case 'EXECUTE':
+      case "EXECUTE":
         this.handleExecuteRequest(message.data);
         break;
-      case 'HEARTBEAT':
+      case "HEARTBEAT":
         this.handleHeartbeat(message.data);
         break;
     }
   }
-  
+
   private async handleExecuteRequest(data: ExecuteMessage): Promise<void> {
     try {
       // 从本地获取脚本并执行
       const script = await this.getLocalScript(data.scriptId);
       const result = await this.executeScript(script.code, data.params);
-      
+
       this.send({
-        type: 'EXECUTE',
-        action: 'script.result',
+        type: "EXECUTE",
+        action: "script.result",
         username: this.config.username,
         clientId: this.getClientId(),
         data: {
           taskId: data.taskId,
           success: true,
           result: result,
-          executionTime: Date.now() - data.timestamp
-        }
+          executionTime: Date.now() - data.timestamp,
+        },
       });
     } catch (error) {
       this.send({
-        type: 'EXECUTE',
-        action: 'script.result',
+        type: "EXECUTE",
+        action: "script.result",
         username: this.config.username,
         clientId: this.getClientId(),
         data: {
           taskId: data.taskId,
           success: false,
           error: error.message,
-          executionTime: Date.now() - data.timestamp
-        }
+          executionTime: Date.now() - data.timestamp,
+        },
       });
     }
   }
-  
+
   private async getLocalScript(scriptId: string): Promise<Script> {
     // 从本地存储获取脚本
     const scripts = await getLocalScripts();
-    const script = scripts.find(s => s.id === scriptId);
+    const script = scripts.find((s) => s.id === scriptId);
     if (!script) {
       throw new Error(`Script not found: ${scriptId}`);
     }
     return script;
   }
-  
+
   private syncScripts(): void {
-    getLocalScripts().then(scripts => {
+    getLocalScripts().then((scripts) => {
       this.send({
-        type: 'SCRIPT_LIST',
-        action: 'script.sync',
+        type: "SCRIPT_LIST",
+        action: "script.sync",
         username: this.config.username,
         clientId: this.getClientId(),
         data: {
-          scripts: scripts.map(s => ({
+          scripts: scripts.map((s) => ({
             id: s.id,
             name: s.name,
             version: s.version,
-            metadata: s.metadata
-          }))
-        }
+            metadata: s.metadata,
+          })),
+        },
       });
     });
   }
@@ -1440,30 +1488,30 @@ export class CloudWebSocketClient {
 
 ### 7.1 各阶段时间估算
 
-| 阶段 | 任务 | 预计时间 | 优先级 |
-|------|------|----------|--------|
-| **阶段一: 项目规划与准备** | | **1天** | 高 |
-| | 项目结构创建 | 0.5天 | 高 |
-| | 基础配置 | 0.5天 | 高 |
-| **阶段二: 核心功能开发** | | **5天** | 高 |
-| | WebSocket服务实现 | 2天 | 高 |
-| | 客户端管理 | 1天 | 高 |
-| | 脚本管理 | 1天 | 高 |
-| | 执行管理 | 1天 | 高 |
-| **阶段三: 接口与协议设计** | | **1天** | 高 |
-| | WebSocket协议实现 | 0.5天 | 高 |
-| | REST API实现 | 0.5天 | 高 |
-| **阶段四: 质量保障与测试** | | **2天** | 中 |
-| | 单元测试 | 1天 | 中 |
-| | 集成测试 | 1天 | 中 |
-| **阶段五: 文档与交付** | | **1天** | 中 |
-| | API文档编写 | 0.5天 | 中 |
-| | 部署文档编写 | 0.5天 | 中 |
-| **阶段六: 插件端管理页面** | | **3天** | 高 |
-| | 管理页面UI开发 | 1.5天 | 高 |
-| | WebSocket客户端实现 | 1天 | 高 |
-| | 与服务端集成测试 | 0.5天 | 高 |
-| **总计** | | **13天** | |
+| 阶段                       | 任务                | 预计时间 | 优先级 |
+| -------------------------- | ------------------- | -------- | ------ |
+| **阶段一: 项目规划与准备** |                     | **1天**  | 高     |
+|                            | 项目结构创建        | 0.5天    | 高     |
+|                            | 基础配置            | 0.5天    | 高     |
+| **阶段二: 核心功能开发**   |                     | **5天**  | 高     |
+|                            | WebSocket服务实现   | 2天      | 高     |
+|                            | 客户端管理          | 1天      | 高     |
+|                            | 脚本管理            | 1天      | 高     |
+|                            | 执行管理            | 1天      | 高     |
+| **阶段三: 接口与协议设计** |                     | **1天**  | 高     |
+|                            | WebSocket协议实现   | 0.5天    | 高     |
+|                            | REST API实现        | 0.5天    | 高     |
+| **阶段四: 质量保障与测试** |                     | **2天**  | 中     |
+|                            | 单元测试            | 1天      | 中     |
+|                            | 集成测试            | 1天      | 中     |
+| **阶段五: 文档与交付**     |                     | **1天**  | 中     |
+|                            | API文档编写         | 0.5天    | 中     |
+|                            | 部署文档编写        | 0.5天    | 中     |
+| **阶段六: 插件端管理页面** |                     | **3天**  | 高     |
+|                            | 管理页面UI开发      | 1.5天    | 高     |
+|                            | WebSocket客户端实现 | 1天      | 高     |
+|                            | 与服务端集成测试    | 0.5天    | 高     |
+| **总计**                   |                     | **13天** |        |
 
 ### 7.2 里程碑计划
 
@@ -1479,10 +1527,12 @@ export class CloudWebSocketClient {
 ### 8.1 内存管理
 
 **难点:**
+
 - 大量数据的内存占用
 - 数据清理策略
 
 **解决方案:**
+
 1. 使用ConcurrentHashMap保证线程安全
 2. 实现定期清理过期数据
 3. 监控内存使用情况
@@ -1490,10 +1540,12 @@ export class CloudWebSocketClient {
 ### 8.2 连接管理
 
 **难点:**
+
 - 大量并发连接
 - 异常断线检测
 
 **解决方案:**
+
 1. 使用心跳检测机制
 2. 实现自动重连
 3. 连接池管理
@@ -1501,10 +1553,12 @@ export class CloudWebSocketClient {
 ### 8.3 数据隔离
 
 **难点:**
+
 - 多用户数据隔离
 - 查询效率
 
 **解决方案:**
+
 1. 使用username作为key前缀
 2. 合理设计Map结构
 3. 提供便捷的查询方法
@@ -1514,17 +1568,20 @@ export class CloudWebSocketClient {
 ## 九、后续优化方向
 
 ### 9.1 功能增强
+
 - 支持数据库持久化
 - 实现集群部署
 - 添加用户认证
 - 支持脚本版本管理
 
 ### 9.2 性能优化
+
 - 引入缓存机制
 - 实现数据分片
 - 优化查询性能
 
 ### 9.3 安全增强
+
 - 实现完整的认证授权
 - 添加API限流
 - 实现审计日志
@@ -1536,6 +1593,7 @@ export class CloudWebSocketClient {
 ### A. 配置文件示例
 
 **application.yml:**
+
 ```yaml
 server:
   port: 8080

@@ -20,6 +20,7 @@ public class ClientInfo {
     private LocalDateTime connectedAt;
     private LocalDateTime lastHeartbeat;
     private Map<String, Object> metadata;
+    private Integer scriptCount;
     
     public enum ClientStatus {
         ONLINE, OFFLINE

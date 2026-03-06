@@ -19,19 +19,19 @@
  * - 进度回调 / 完成回调
  */
 GM_download({
-    url: "https://scriptcat.org/api/v2/open/crx-download/ndcooeababalnlpkfedmmbbbgkljhpjf",
-    name: "scriptcat.crx",
+  url: "https://scriptcat.org/api/v2/open/crx-download/ndcooeababalnlpkfedmmbbbgkljhpjf",
+  name: "scriptcat.crx",
 
-    headers: {
-        referer: "http://www.example.com/",
-        origin: "www.example.com"
-    },
+  headers: {
+    referer: "http://www.example.com/",
+    origin: "www.example.com",
+  },
 
-    onprogress(data) {
-        console.log("progress", data);
-    },
+  onprogress(data) {
+    console.log("progress", data);
+  },
 
-    onload(data) {
-        console.log("load", data);
-    },
+  onload(data) {
+    console.log("load", data);
+  },
 });

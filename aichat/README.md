@@ -9,10 +9,9 @@
 ## 目标描述
 
 1. 为当前项目增加ai对话的，目标是通过ai对话可以编写脚本，在当前网站测试运行，最终保存。
-2. 是在当前网站的中嵌入一个ai 对话侧边栏，可以选择引用元素，然后发送相关数据给大模型，技术使用Chrome SidePanel API
-    -我期望的是在当前网站，比如我在google.com，然后在当前google.com的右侧侧边栏就出现内容，然后交互选择元素。
-    -然后ai模型会返回结果，然后根据结果，生成代码，然后嵌入到当前页面中，然后用户可以运行和保存。
-    -然后用户可以运行和保存。
+2. 是在当前网站的中嵌入一个ai 对话侧边栏，可以选择引用元素，然后发送相关数据给大模型，技术使用Chrome SidePanel
+   API -我期望的是在当前网站，比如我在google.com，然后在当前google.com的右侧侧边栏就出现内容，然后交互选择元素。-然后ai模型会返回结果，然后根据结果，生成代码，然后嵌入到当前页面中，然后用户可以运行和保存。-然后用户可以运行和保存。
+
 ## 注意
 
 1. 使用streamdown处理markdown的数据返回。
@@ -47,33 +46,21 @@ curl http://localhost:1234/v1/chat/completions \
 ```
 
 ## 侧边栏技术方案
-User点击插件Icon
-    ↓
-chrome.sidePanel.open()
-    ↓
-注入Content Script（遮罩层+事件监听）
-    ↓
-User点击页面元素(AI自动记录特征) → 可多选
-    ↓
-点击"完成选择" → 生成JSON描述发送到Side Panel
-    ↓
-用户输入Prompt（如"把选中的按钮变红色"）
-    ↓
-调用LLM API传入：DOM描述 + Prompt
-    ↓
-接收AI返回的JS代码 → 在Content Script中沙箱执行
-    ↓
-实时反馈修改效果到页面
+
+User点击插件Icon ↓ chrome.sidePanel.open() ↓注入Content Script（遮罩层+事件监听）↓ User点击页面元素(AI自动记录特征)
+→ 可多选↓点击"完成选择" → 生成JSON描述发送到Side Panel ↓用户输入Prompt（如"把选中的按钮变红色"）↓调用LLM
+API传入：DOM描述 + Prompt ↓接收AI返回的JS代码 → 在Content Script中沙箱执行↓实时反馈修改效果到页面
 
 1. Side Panel ↔ Background Service Worker ↔ Content Script
 2. 使用 "permissions": ["sidePanel", "scripting", "activeTab", "storage"]
 3. 选择器使用css-selector-generator技术方案
 
 ## 技术选型
-| 组件          | 选型                          | 理由                         |
-| ----------- | --------------------------- | -------------------------- |
-| 侧边栏技术       | Chrome SidePanel API        | 原生支持，沉浸式体验，自动管理生命周期        |
-| 选择器生成       | `css-selector-generator`    | 生成短、稳定、可读的选择器，支持多种策略       |
-| Markdown 渲染 | StreamDown                  | 轻量级，支持流式渲染，适配 AI 逐字返回场景    |
-| 代码高亮        | PrismJS / Shiki             | 支持 JavaScript 语法高亮，可扩展运行按钮 |
-| 存储方案        | IndexedDB (via localforage) | 大容量、异步、支持结构化数据             |
+
+| 组件          | 选型                        | 理由                                       |
+| ------------- | --------------------------- | ------------------------------------------ |
+| 侧边栏技术    | Chrome SidePanel API        | 原生支持，沉浸式体验，自动管理生命周期     |
+| 选择器生成    | `css-selector-generator`    | 生成短、稳定、可读的选择器，支持多种策略   |
+| Markdown 渲染 | StreamDown                  | 轻量级，支持流式渲染，适配 AI 逐字返回场景 |
+| 代码高亮      | PrismJS / Shiki             | 支持 JavaScript 语法高亮，可扩展运行按钮   |
+| 存储方案      | IndexedDB (via localforage) | 大容量、异步、支持结构化数据               |

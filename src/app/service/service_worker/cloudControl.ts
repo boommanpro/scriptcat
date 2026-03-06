@@ -1,12 +1,20 @@
-import { CloudWebSocketClient, CloudConnectionConfig } from "@App/pkg/cloud/CloudWebSocketClient";
-import { AutomationScriptDAO, AutomationScript } from "@App/app/repo/automationScript";
+import { CloudWebSocketClient } from "@App/pkg/cloud/CloudWebSocketClient";
+import type { CloudConnectionConfig, ScriptFetcher } from "@App/pkg/cloud/CloudWebSocketClient";
+import { AutomationScriptDAO } from "@App/app/repo/automationScript";
+import { Group } from "@Packages/message/server";
+import type { IMessageQueue } from "@Packages/message/message_queue";
+import { AutomationScriptService } from "./automationScript";
 
 export class CloudControlBackgroundService {
     private client: CloudWebSocketClient | null = null;
     private config: CloudConnectionConfig | null = null;
     private automationScriptDAO: AutomationScriptDAO;
+    private automationScriptService: AutomationScriptService | null = null;
 
-    constructor() {
+    constructor(
+        private group: Group,
+        private mq: IMessageQueue
+    ) {
         this.automationScriptDAO = new AutomationScriptDAO();
         this.config = null;
         this.client = null;
@@ -14,8 +22,41 @@ export class CloudControlBackgroundService {
     }
 
     private async initialize(): Promise<void> {
+        this.automationScriptService = new AutomationScriptService(this.group, this.mq);
         await this.loadConfig();
         this.setupMessageListener();
+    }
+
+    private createScriptFetcher(): ScriptFetcher {
+        return async () => {
+            try {
+                console.log("[CloudControl] ScriptFetcher called");
+                const scripts = await this.automationScriptDAO.getAllScripts();
+                console.log("[CloudControl] ScriptFetcher returned:", scripts.length, "scripts");
+
+                // 使用 key 作为主要标识符上报给服务端
+                return scripts.map((script) => ({
+                    id: script.key, // 使用 key 作为 id，确保服务端使用 key 来标识脚本
+                    key: script.key,
+                    name: script.name,
+                    enabled: true,
+                    metadata: {
+                        version: "1.0.0",
+                        namespace: script.key,
+                        description: script.description,
+                        author: "",
+                        match: script.targetUrl ? [script.targetUrl] : [],
+                        grant: [],
+                        crontab: "",
+                        cloudcat: true,
+                        inputParams: script.inputParams || "{}", // 包含输入参数示例
+                    },
+                }));
+            } catch (error) {
+                console.error("[CloudControl] ScriptFetcher error:", error);
+                return [];
+            }
+        };
     }
 
     private async loadConfig(): Promise<void> {
@@ -77,7 +118,7 @@ export class CloudControlBackgroundService {
             await chrome.storage.local.set({ cloud_config: config });
 
             if (!this.client) {
-                this.client = new CloudWebSocketClient(config);
+                this.client = new CloudWebSocketClient(config, this.createScriptFetcher());
                 this.setupClientListeners();
             } else {
                 this.client.updateConfig(config);
@@ -112,8 +153,9 @@ export class CloudControlBackgroundService {
             const scripts = await this.automationScriptDAO.getAllScripts();
             console.log("[CloudControl] getAllScripts returned:", scripts.length, "scripts");
 
+            // 使用 key 作为主要标识符
             const scriptConfigs = scripts.map((script) => ({
-                id: script.id,
+                id: script.key, // 使用 key 作为 id，保持一致性
                 key: script.key,
                 name: script.name,
                 enabled: true,
@@ -172,41 +214,60 @@ export class CloudControlBackgroundService {
         if (!this.client) return;
 
         this.client.on("statusChange", (status) => {
-            chrome.runtime.sendMessage({
-                action: "cloud_status_change",
-                status,
-            }).catch(() => { });
+            chrome.runtime
+                .sendMessage({
+                    action: "cloud_status_change",
+                    status,
+                })
+                .catch(() => { });
         });
 
         this.client.on("log", (log) => {
-            chrome.runtime.sendMessage({
-                action: "cloud_log",
-                log,
-            }).catch(() => { });
+            chrome.runtime
+                .sendMessage({
+                    action: "cloud_log",
+                    log,
+                })
+                .catch(() => { });
         });
 
         this.client.on("execute", async (data) => {
             const { taskId, scriptId, params } = data;
+            const startTime = Date.now();
             try {
-                const script = await this.automationScriptDAO.getByKey(scriptId);
-                if (script) {
-                    await this.executeAutomationScript(script, params);
-                    this.client?.send({
-                        id: `msg-${Date.now()}`,
-                        type: "EXECUTE",
-                        action: "script.result",
-                        timestamp: Date.now(),
-                        data: {
-                            taskId,
-                            success: true,
-                            result: "Script executed successfully",
-                            executionTime: 0,
-                        },
-                    });
-                } else {
-                    throw new Error(`Script not found: ${scriptId}`);
+                console.log("[CloudControl] Execute request received:", { taskId, scriptId, params });
+
+                // scriptId 实际上是脚本的 key（因为上报时使用 key 作为 id）
+                const scriptKey = scriptId;
+                const script = await this.automationScriptDAO.getByKey(scriptKey);
+
+                if (!script) {
+                    throw new Error(`Script not found with key: ${scriptKey}`);
                 }
+
+                console.log("[CloudControl] Found script:", { key: script.key, name: script.name });
+
+                const result = await this.executeAutomationScript(script.key, params);
+                const duration = Date.now() - startTime;
+
+                console.log("[CloudControl] Execution result:", result);
+
+                this.client?.send({
+                    id: `msg-${Date.now()}`,
+                    type: "EXECUTE",
+                    action: "script.result",
+                    timestamp: Date.now(),
+                    data: {
+                        taskId,
+                        success: result.success,
+                        result: result.result,
+                        error: result.error,
+                        executionTime: duration,
+                    },
+                });
             } catch (error: any) {
+                const duration = Date.now() - startTime;
+                console.error("[CloudControl] Execution error:", error);
                 this.client?.send({
                     id: `msg-${Date.now()}`,
                     type: "EXECUTE",
@@ -216,23 +277,35 @@ export class CloudControlBackgroundService {
                         taskId,
                         success: false,
                         error: error.message,
-                        executionTime: 0,
+                        executionTime: duration,
                     },
                 });
             }
         });
     }
 
-    private async executeAutomationScript(script: AutomationScript, params: any): Promise<void> {
-        console.log(`[CloudControl] Executing automation script: ${script.name}`, params);
-        // 这里可以调用现有的自动化脚本执行逻辑
-        // 由于这是后台服务，可能需要通过消息传递给content script执行
+    private async executeAutomationScript(
+        scriptKey: string,
+        params: any
+    ): Promise<{ success: boolean; result?: any; error?: string }> {
+        console.log(`[CloudControl] Executing automation script with key: ${scriptKey}`, params);
+
+        if (!this.automationScriptService) {
+            throw new Error("AutomationScriptService not initialized");
+        }
+
+        try {
+            const result = await this.automationScriptService.executeScript(scriptKey, params);
+            return result;
+        } catch (error: any) {
+            return { success: false, error: error.message };
+        }
     }
 
     async connect(): Promise<void> {
         if (this.config && this.config.serverUrl && this.config.username) {
             if (!this.client) {
-                this.client = new CloudWebSocketClient(this.config);
+                this.client = new CloudWebSocketClient(this.config, this.createScriptFetcher());
                 this.setupClientListeners();
             }
             await this.client.connect();

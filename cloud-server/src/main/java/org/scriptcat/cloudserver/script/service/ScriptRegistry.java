@@ -55,4 +55,14 @@ public class ScriptRegistry {
     public ConcurrentHashMap<String, ConcurrentHashMap<String, ScriptInfo>> getAllScripts() {
         return scripts;
     }
+    
+    public int getScriptCountByClient(String username, String clientId) {
+        ConcurrentHashMap<String, ScriptInfo> userScripts = scripts.get(username);
+        if (userScripts == null) {
+            return 0;
+        }
+        return (int) userScripts.values().stream()
+            .filter(script -> clientId.equals(script.getClientId()))
+            .count();
+    }
 }

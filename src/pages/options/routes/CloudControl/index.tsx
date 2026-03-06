@@ -185,9 +185,7 @@ const CloudControl: React.FC = () => {
       scriptId,
       enabled,
     });
-    setScripts((prev) =>
-      prev.map((s) => (s.id === scriptId ? { ...s, enabled } : s))
-    );
+    setScripts((prev) => prev.map((s) => (s.id === scriptId ? { ...s, enabled } : s)));
     Message.success(enabled ? "已启用上报" : "已禁用上报");
   };
 
@@ -252,7 +250,17 @@ const CloudControl: React.FC = () => {
             />
           </FormItem>
 
-          <FormItem label={<span>自动重连 <Switch checked={config.autoReconnect} onChange={(checked) => setConfig({ ...config, autoReconnect: checked })} /></span>}>
+          <FormItem
+            label={
+              <span>
+                自动重连{" "}
+                <Switch
+                  checked={config.autoReconnect}
+                  onChange={(checked) => setConfig({ ...config, autoReconnect: checked })}
+                />
+              </span>
+            }
+          >
             <Space>
               <Text type="secondary">重连间隔:</Text>
               <Input
@@ -338,10 +346,7 @@ const CloudControl: React.FC = () => {
                   dataIndex: "enabled",
                   key: "enabled",
                   render: (enabled: boolean, record: ScriptReportConfig) => (
-                    <Switch
-                      checked={enabled}
-                      onChange={(checked) => handleToggleScriptReport(record.id, checked)}
-                    />
+                    <Switch checked={enabled} onChange={(checked) => handleToggleScriptReport(record.id, checked)} />
                   ),
                 },
                 {
@@ -400,9 +405,7 @@ const CloudControl: React.FC = () => {
               key: "direction",
               width: 80,
               render: (direction: string) => (
-                <Tag color={direction === "send" ? "blue" : "green"}>
-                  {direction === "send" ? "发送" : "接收"}
-                </Tag>
+                <Tag color={direction === "send" ? "blue" : "green"}>{direction === "send" ? "发送" : "接收"}</Tag>
               ),
             },
             {

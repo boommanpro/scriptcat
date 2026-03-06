@@ -44,6 +44,8 @@ export interface CommunicationLog {
     error?: string;
 }
 
+export type ScriptFetcher = () => Promise<any[]>;
+
 export class CloudWebSocketClient {
     private socket: WebSocket | null = null;
     private config: CloudConnectionConfig;
@@ -55,11 +57,12 @@ export class CloudWebSocketClient {
     private logs: CommunicationLog[] = [];
     private scriptConfigs: Map<string, ScriptReportConfig> = new Map();
     private listeners: Map<string, Set<(data: any) => void>> = new Map();
+    private scriptFetcher: ScriptFetcher;
 
     private maxLogs = 1000;
     private maxReconnectAttempts = 5;
 
-    constructor(config: CloudConnectionConfig) {
+    constructor(config: CloudConnectionConfig, scriptFetcher?: ScriptFetcher) {
         this.config = config;
         this.clientId = "";
         this.status = {
@@ -67,8 +70,28 @@ export class CloudWebSocketClient {
             connecting: false,
             reconnectAttempts: 0,
         };
+        this.scriptFetcher = scriptFetcher || this.defaultScriptFetcher.bind(this);
         this.initializeClientId();
         this.loadScriptConfigs();
+    }
+
+    private async defaultScriptFetcher(): Promise<any[]> {
+        return new Promise((resolve) => {
+            chrome.runtime.sendMessage({ action: "cloud_get_scripts" }, (response) => {
+                if (chrome.runtime.lastError) {
+                    console.error("[CloudWS] defaultScriptFetcher error:", chrome.runtime.lastError);
+                    resolve([]);
+                    return;
+                }
+                if (response?.scripts) {
+                    console.log("[CloudWS] defaultScriptFetcher received:", response.scripts.length, "scripts");
+                    resolve(response.scripts);
+                } else {
+                    console.log("[CloudWS] defaultScriptFetcher: no scripts in response", response);
+                    resolve([]);
+                }
+            });
+        });
     }
 
     private async initializeClientId(): Promise<void> {
@@ -237,14 +260,16 @@ export class CloudWebSocketClient {
 
     private async handleExecuteRequest(data: any): Promise<void> {
         try {
-            const { taskId, scriptId, params } = data;
-            const script = await this.getLocalScript(scriptId);
+            // scriptId 实际上是脚本的 key（因为上报时使用 key 作为 id）
+            const { taskId, scriptId: scriptKey, params } = data;
+            const script = await this.getLocalScript(scriptKey);
 
             if (!script) {
-                throw new Error(`Script not found: ${scriptId}`);
+                throw new Error(`Script not found with key: ${scriptKey}`);
             }
 
-            this.emit("execute", { taskId, scriptId, params, script });
+            // 传递 scriptKey 给 execute 事件，让 cloudControl 使用 key 查找脚本
+            this.emit("execute", { taskId, scriptId: scriptKey, params, script });
 
             this.send({
                 id: this.generateMessageId(),
@@ -278,7 +303,7 @@ export class CloudWebSocketClient {
         }
     }
 
-    private handleHeartbeat(data: any): void {
+    private handleHeartbeat(_data: any): void {
         this.status.lastHeartbeat = Date.now();
         this.notifyStatusChange();
     }
@@ -354,8 +379,8 @@ export class CloudWebSocketClient {
 
     async syncScripts(): Promise<void> {
         console.log("[CloudWS] syncScripts called");
-        const scripts = await this.getLocalScripts();
-        console.log("[CloudWS] getLocalScripts returned:", scripts.length, "scripts");
+        const scripts = await this.scriptFetcher();
+        console.log("[CloudWS] scriptFetcher returned:", scripts.length, "scripts");
         console.log("[CloudWS] scriptConfigs size:", this.scriptConfigs.size);
 
         const enabledScripts = scripts.filter((script) => {
@@ -386,6 +411,7 @@ export class CloudWebSocketClient {
                         grant: script.metadata?.grant,
                         crontab: script.metadata?.crontab,
                         cloudCat: script.metadata?.cloudcat,
+                        inputParams: script.metadata?.inputParams, // 包含输入参数示例
                     },
                 })),
             },
@@ -395,21 +421,10 @@ export class CloudWebSocketClient {
         this.addLog("send", "SCRIPT_LIST", "script.sync", { count: enabledScripts.length });
     }
 
-    private async getLocalScripts(): Promise<any[]> {
-        return new Promise((resolve) => {
-            chrome.runtime.sendMessage({ action: "cloud_get_scripts" }, (response) => {
-                if (response?.scripts) {
-                    resolve(response.scripts);
-                } else {
-                    resolve([]);
-                }
-            });
-        });
-    }
-
-    private async getLocalScript(scriptId: string): Promise<any> {
-        const scripts = await this.getLocalScripts();
-        return scripts.find((s) => s.id === scriptId || s.key === scriptId);
+    private async getLocalScript(scriptKey: string): Promise<any> {
+        const scripts = await this.scriptFetcher();
+        // scriptKey 就是脚本的 key（因为上报时使用 key 作为 id）
+        return scripts.find((s) => s.key === scriptKey || s.id === scriptKey);
     }
 
     send(message: CloudMessage): void {
@@ -437,7 +452,14 @@ export class CloudWebSocketClient {
         this.notifyStatusChange();
     }
 
-    private addLog(direction: "send" | "receive", type: string, action: string, data: any, success?: boolean, error?: string): void {
+    private addLog(
+        direction: "send" | "receive",
+        type: string,
+        action: string,
+        data: any,
+        success?: boolean,
+        error?: string
+    ): void {
         const log: CommunicationLog = {
             id: uuidv4(),
             timestamp: Date.now(),

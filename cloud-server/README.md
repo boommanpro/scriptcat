@@ -7,6 +7,7 @@ ScriptCat 云控服务端 - MVP版本
 基于Java Spring Boot开发的轻量级WebSocket服务端，实现与Chrome插件的实时连接，提供自动化脚本的云控管理能力。
 
 **MVP版本特点:**
+
 - ✅ 纯内存存储，无数据库依赖
 - ✅ 单机部署，无集群考虑
 - ✅ 简化认证，user作为唯一标识
@@ -59,6 +60,7 @@ ws://localhost:8080/ws
 ### 认证
 
 连接时需要在header中携带:
+
 - `username`: 用户名（必填）
 
 ### 消息格式
@@ -84,6 +86,7 @@ ws://localhost:8080/ws
 ### 1. 认证消息 (AUTH)
 
 **客户端 → 服务端:**
+
 ```json
 {
   "type": "AUTH",
@@ -98,6 +101,7 @@ ws://localhost:8080/ws
 ```
 
 **服务端 → 客户端:**
+
 ```json
 {
   "success": true,
@@ -108,6 +112,7 @@ ws://localhost:8080/ws
 ### 2. 脚本列表消息 (SCRIPT_LIST)
 
 **客户端 → 服务端:**
+
 ```json
 {
   "type": "SCRIPT_LIST",
@@ -133,6 +138,7 @@ ws://localhost:8080/ws
 ### 3. 执行消息 (EXECUTE)
 
 **服务端 → 客户端:**
+
 ```json
 {
   "type": "EXECUTE",
@@ -148,6 +154,7 @@ ws://localhost:8080/ws
 ```
 
 **客户端 → 服务端:**
+
 ```json
 {
   "type": "EXECUTE",
@@ -166,6 +173,7 @@ ws://localhost:8080/ws
 ### 4. 心跳消息 (HEARTBEAT)
 
 **客户端 → 服务端:**
+
 ```json
 {
   "type": "HEARTBEAT",
@@ -185,6 +193,7 @@ GET /api/clients?username={username}
 ```
 
 **响应示例:**
+
 ```json
 {
   "success": true,
@@ -236,12 +245,12 @@ server:
 
 app:
   websocket:
-    heartbeat-interval: 30000    # 心跳间隔(毫秒)
-    connection-timeout: 90000    # 连接超时(毫秒)
-  
+    heartbeat-interval: 30000 # 心跳间隔(毫秒)
+    connection-timeout: 90000 # 连接超时(毫秒)
+
   execution:
-    timeout: 30000               # 执行超时(毫秒)
-    max-concurrent: 100          # 最大并发数
+    timeout: 30000 # 执行超时(毫秒)
+    max-concurrent: 100 # 最大并发数
 ```
 
 ## 项目结构
