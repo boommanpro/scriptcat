@@ -6,9 +6,12 @@ import org.scriptcat.cloudserver.client.model.ClientInfo;
 import org.scriptcat.cloudserver.client.service.ClientService;
 import org.scriptcat.cloudserver.controller.ManagementWebSocketController;
 import org.scriptcat.cloudserver.execution.service.ExecutionService;
+import org.scriptcat.cloudserver.mcp.listener.ScriptSyncEventListener;
+import org.scriptcat.cloudserver.mcp.service.McpToolExecutionService;
 import org.scriptcat.cloudserver.script.service.ScriptService;
 import org.scriptcat.cloudserver.websocket.message.Message;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -34,6 +37,12 @@ public class RawWebSocketHandler extends TextWebSocketHandler {
     
     @Autowired
     private ManagementWebSocketController managementController;
+    
+    @Autowired
+    private McpToolExecutionService mcpToolExecutionService;
+    
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
     
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
@@ -149,6 +158,8 @@ public class RawWebSocketHandler extends TextWebSocketHandler {
         
         scriptService.syncScripts(username, clientId, message.getData());
         
+        eventPublisher.publishEvent(new ScriptSyncEventListener.ScriptSyncEvent(username, clientId));
+        
         sendSuccess(session, "SCRIPT_LIST", "script.sync.response", "Scripts synced successfully");
         log.info("Scripts synced: {} - {}, count: {}", username, clientId, 
             message.getData() != null && message.getData().containsKey("scripts") ? 
@@ -163,8 +174,18 @@ public class RawWebSocketHandler extends TextWebSocketHandler {
             return;
         }
         
-        executionService.updateResult(username, message.getData());
-        log.info("Execution result received: {}", message.getData().get("taskId"));
+        Map<String, Object> data = message.getData();
+        String taskId = (String) data.get("taskId");
+        Boolean success = (Boolean) data.get("success");
+        Object result = data.get("result");
+        String error = (String) data.get("error");
+        
+        executionService.updateResult(username, data);
+        
+        mcpToolExecutionService.handleExecutionResult(taskId, 
+            success != null && success, result, error);
+        
+        log.info("Execution result received: {}", taskId);
     }
     
     private void handleHeartbeat(WebSocketSession session, Message message) throws Exception {

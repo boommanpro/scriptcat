@@ -11,12 +11,27 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+  ai:
+    mcp:
+      server:
+        name: scriptcat-mcp-server
+        version: 1.0.0
+        type: SYNC
+        protocol: SSE
+        sse-message-endpoint: /mcp/message
+        tool-change-notification: true
+        resource-change-notification: true
+        prompt-change-notification: true
+        annotation-scanner:
+          enabled: false
+
 logging:
   level:
     root: INFO
     org.scriptcat: DEBUG
     org.springframework.web: INFO
     org.springframework.web.socket: DEBUG
+    io.modelcontextprotocol: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
@@ -29,3 +44,9 @@ app:
   execution:
     timeout: 30000
     max-concurrent: 100
+
+  mcp:
+    auth:
+      enabled: true
+      header-name: Authorization
+      token-prefix: "Bearer "
