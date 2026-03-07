@@ -664,11 +664,11 @@
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  background: var(--color-primary-light-1);
-  border: 1px solid var(--color-primary-light-2);
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-primary-6);
   border-radius: 4px;
   font-size: 12px;
-  color: var(--color-primary-6);
+  color: var(--color-text-1);
 }
 
 .element-tag-text {

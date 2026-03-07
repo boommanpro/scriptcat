@@ -1366,9 +1366,9 @@
 }
 
 .monitor-tag.network-tag {
-  background: var(--color-primary-light-1);
-  border: 1px solid var(--color-primary-light-2);
-  color: var(--color-primary-6);
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-primary-6);
+  color: var(--color-text-1);
 }
 
 .monitor-tag.console-tag {

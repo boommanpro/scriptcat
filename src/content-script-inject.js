@@ -3,6 +3,7 @@ const selectionState = {
   selectedElements: [],
   highlightOverlay: null,
   tooltipElement: null,
+  currentHoveredElement: null,
 };
 
 function createHighlightOverlay() {
@@ -205,23 +206,44 @@ function handleElementClick(_event) {
 function handleMouseOver(event) {
   if (!selectionState.isSelecting) return;
 
-  const overlay1 = createHighlightOverlay();
-  const tooltip = createTooltip();
   const element = event.target;
+  
+  // 如果已经是当前高亮的元素，不需要重复处理
+  if (selectionState.currentHoveredElement === element) return;
+  
+  // 更新当前高亮的元素
+  selectionState.currentHoveredElement = element;
 
-  showHighlight(element, overlay1);
+  const overlay = createHighlightOverlay();
+  const tooltip = createTooltip();
+
+  showHighlight(element, overlay);
   showTooltip(element, tooltip);
 }
 
-function handleMouseOut(_event) {
-  const overlay = selectionState.highlightOverlay;
-  const tooltip = selectionState.tooltipElement;
+function handleMouseOut(event) {
+  if (!selectionState.isSelecting) return;
 
-  if (overlay) {
-    hideHighlight(overlay);
+  const relatedTarget = event.relatedTarget;
+  
+  // 如果鼠标还在当前元素或其子元素内，不隐藏高亮
+  if (relatedTarget && selectionState.currentHoveredElement?.contains(relatedTarget)) {
+    return;
   }
-  if (tooltip) {
-    hideTooltip(tooltip);
+  
+  // 只有当鼠标完全离开当前高亮元素时，才隐藏高亮
+  if (relatedTarget !== selectionState.currentHoveredElement) {
+    const overlay = selectionState.highlightOverlay;
+    const tooltip = selectionState.tooltipElement;
+
+    if (overlay) {
+      hideHighlight(overlay);
+    }
+    if (tooltip) {
+      hideTooltip(tooltip);
+    }
+    
+    selectionState.currentHoveredElement = null;
   }
 }
 
@@ -483,6 +505,7 @@ function stopSelection() {
   if (!selectionState.isSelecting) return;
 
   selectionState.isSelecting = false;
+  selectionState.currentHoveredElement = null;
 
   document.removeEventListener("click", handleElementClick, true);
   document.removeEventListener("mouseover", handleMouseOver, true);
