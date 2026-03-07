@@ -10,15 +10,15 @@
 
 ## 测试概览
 
-| 测试类别 | 测试用例数 | 通过数 | 失败数 |
-|----------|------------|--------|--------|
-| 健康检查接口 | 1 | 1 | 0 |
-| 服务信息接口 | 1 | 1 | 0 |
-| 认证机制 | 4 | 4 | 0 |
-| 工具列表接口 | 2 | 2 | 0 |
-| 工具调用接口 | 2 | 2 | 0 |
-| SSE 连接接口 | 1 | 1 | 0 |
-| **总计** | **11** | **11** | **0** |
+| 测试类别     | 测试用例数 | 通过数 | 失败数 |
+| ------------ | ---------- | ------ | ------ |
+| 健康检查接口 | 1          | 1      | 0      |
+| 服务信息接口 | 1          | 1      | 0      |
+| 认证机制     | 4          | 4      | 0      |
+| 工具列表接口 | 2          | 2      | 0      |
+| 工具调用接口 | 2          | 2      | 0      |
+| SSE 连接接口 | 1          | 1      | 0      |
+| **总计**     | **11**     | **11** | **0**  |
 
 ## 测试用例详情
 
@@ -27,11 +27,13 @@
 #### 测试用例 1.1：健康检查
 
 **请求命令：**
+
 ```bash
 curl -s http://localhost:8080/mcp/health | jq .
 ```
 
 **预期结果：**
+
 ```json
 {
   "status": "UP",
@@ -40,6 +42,7 @@ curl -s http://localhost:8080/mcp/health | jq .
 ```
 
 **实际结果：**
+
 ```json
 {
   "status": "UP",
@@ -56,11 +59,13 @@ curl -s http://localhost:8080/mcp/health | jq .
 #### 测试用例 2.1：获取服务信息
 
 **请求命令：**
+
 ```bash
 curl -s http://localhost:8080/mcp/info | jq .
 ```
 
 **预期结果：**
+
 ```json
 {
   "name": "scriptcat-mcp-server",
@@ -75,6 +80,7 @@ curl -s http://localhost:8080/mcp/info | jq .
 ```
 
 **实际结果：**
+
 ```json
 {
   "protocol": "streamable-http",
@@ -97,11 +103,13 @@ curl -s http://localhost:8080/mcp/info | jq .
 #### 测试用例 3.1：缺少 Authorization 头
 
 **请求命令：**
+
 ```bash
 curl -s http://localhost:8080/mcp/tools | jq .
 ```
 
 **预期结果：**
+
 ```json
 {
   "error": "Missing Authorization header"
@@ -109,6 +117,7 @@ curl -s http://localhost:8080/mcp/tools | jq .
 ```
 
 **实际结果：**
+
 ```json
 {
   "error": "Missing Authorization header"
@@ -120,11 +129,13 @@ curl -s http://localhost:8080/mcp/tools | jq .
 #### 测试用例 3.2：有效的 Bearer Token
 
 **请求命令：**
+
 ```bash
 curl -s -H "Authorization: Bearer boommanpro" http://localhost:8080/mcp/tools | jq .
 ```
 
 **预期结果：**
+
 ```json
 {
   "username": "boommanpro",
@@ -134,6 +145,7 @@ curl -s -H "Authorization: Bearer boommanpro" http://localhost:8080/mcp/tools | 
 ```
 
 **实际结果：**
+
 ```json
 {
   "count": 0,
@@ -147,11 +159,13 @@ curl -s -H "Authorization: Bearer boommanpro" http://localhost:8080/mcp/tools | 
 #### 测试用例 3.3：不同用户的工具隔离
 
 **请求命令：**
+
 ```bash
 curl -s -H "Authorization: Bearer testuser" http://localhost:8080/mcp/tools | jq .
 ```
 
 **预期结果：**
+
 ```json
 {
   "username": "testuser",
@@ -161,6 +175,7 @@ curl -s -H "Authorization: Bearer testuser" http://localhost:8080/mcp/tools | jq
 ```
 
 **实际结果：**
+
 ```json
 {
   "count": 0,
@@ -174,11 +189,13 @@ curl -s -H "Authorization: Bearer testuser" http://localhost:8080/mcp/tools | jq
 #### 测试用例 3.4：无效的 Authorization 格式
 
 **请求命令：**
+
 ```bash
 curl -s -H "Authorization: InvalidFormat" http://localhost:8080/mcp/tools | jq .
 ```
 
 **预期结果：**
+
 ```json
 {
   "error": "Invalid Authorization header format"
@@ -186,6 +203,7 @@ curl -s -H "Authorization: InvalidFormat" http://localhost:8080/mcp/tools | jq .
 ```
 
 **实际结果：**
+
 ```json
 {
   "error": "Invalid Authorization header format"
@@ -201,11 +219,13 @@ curl -s -H "Authorization: InvalidFormat" http://localhost:8080/mcp/tools | jq .
 #### 测试用例 4.1：获取空工具列表
 
 **请求命令：**
+
 ```bash
 curl -s -H "Authorization: Bearer boommanpro" http://localhost:8080/mcp/tools | jq .
 ```
 
 **预期结果：**
+
 ```json
 {
   "username": "boommanpro",
@@ -215,6 +235,7 @@ curl -s -H "Authorization: Bearer boommanpro" http://localhost:8080/mcp/tools | 
 ```
 
 **实际结果：**
+
 ```json
 {
   "count": 0,
@@ -228,6 +249,7 @@ curl -s -H "Authorization: Bearer boommanpro" http://localhost:8080/mcp/tools | 
 #### 测试用例 4.2：用户工具隔离验证
 
 **请求命令：**
+
 ```bash
 # 用户 A
 curl -s -H "Authorization: Bearer userA" http://localhost:8080/mcp/tools | jq .
@@ -249,6 +271,7 @@ curl -s -H "Authorization: Bearer userB" http://localhost:8080/mcp/tools | jq .
 #### 测试用例 5.1：调用不存在的工具
 
 **请求命令：**
+
 ```bash
 curl -s -X POST \
   -H "Authorization: Bearer boommanpro" \
@@ -258,6 +281,7 @@ curl -s -X POST \
 ```
 
 **预期结果：**
+
 ```json
 {
   "content": [
@@ -271,6 +295,7 @@ curl -s -X POST \
 ```
 
 **实际结果：**
+
 ```json
 {
   "content": [
@@ -288,6 +313,7 @@ curl -s -X POST \
 #### 测试用例 5.2：缺少工具名称
 
 **请求命令：**
+
 ```bash
 curl -s -X POST \
   -H "Authorization: Bearer boommanpro" \
@@ -297,6 +323,7 @@ curl -s -X POST \
 ```
 
 **预期结果：**
+
 ```json
 {
   "content": [
@@ -310,6 +337,7 @@ curl -s -X POST \
 ```
 
 **实际结果：**
+
 ```json
 {
   "content": [
@@ -331,11 +359,13 @@ curl -s -X POST \
 #### 测试用例 6.1：SSE 连接建立
 
 **请求命令：**
+
 ```bash
 curl -s -H "Authorization: Bearer boommanpro" http://localhost:8080/sse
 ```
 
 **预期结果：**
+
 ```
 id:<uuid>
 event:endpoint
@@ -343,6 +373,7 @@ data:/mcp/message
 ```
 
 **实际结果：**
+
 ```
 id:dd6bee9e-801a-484c-b3d8-54a5c775a915
 event:endpoint
@@ -357,12 +388,12 @@ data:/mcp/message
 
 ### 响应时间测试
 
-| 接口 | 平均响应时间 | 目标 | 结果 |
-|------|--------------|------|------|
-| /mcp/health | ~5ms | <500ms | ✅ 通过 |
-| /mcp/info | ~5ms | <500ms | ✅ 通过 |
-| /mcp/tools | ~10ms | <500ms | ✅ 通过 |
-| /mcp/tools/call | ~15ms | <500ms | ✅ 通过 |
+| 接口            | 平均响应时间 | 目标   | 结果    |
+| --------------- | ------------ | ------ | ------- |
+| /mcp/health     | ~5ms         | <500ms | ✅ 通过 |
+| /mcp/info       | ~5ms         | <500ms | ✅ 通过 |
+| /mcp/tools      | ~10ms        | <500ms | ✅ 通过 |
+| /mcp/tools/call | ~15ms        | <500ms | ✅ 通过 |
 
 ### 并发测试
 
@@ -383,13 +414,13 @@ wait
 
 ### 测试场景覆盖
 
-| 错误场景 | 处理方式 | 测试结果 |
-|----------|----------|----------|
-| 缺少认证头 | 返回 401 错误 | ✅ 通过 |
-| 无效认证格式 | 返回 401 错误 | ✅ 通过 |
-| 空用户名 | 返回 401 错误 | ✅ 通过 |
-| 工具不存在 | 返回 MCP 错误响应 | ✅ 通过 |
-| 缺少工具名 | 返回 MCP 错误响应 | ✅ 通过 |
+| 错误场景     | 处理方式          | 测试结果 |
+| ------------ | ----------------- | -------- |
+| 缺少认证头   | 返回 401 错误     | ✅ 通过  |
+| 无效认证格式 | 返回 401 错误     | ✅ 通过  |
+| 空用户名     | 返回 401 错误     | ✅ 通过  |
+| 工具不存在   | 返回 MCP 错误响应 | ✅ 通过  |
+| 缺少工具名   | 返回 MCP 错误响应 | ✅ 通过  |
 
 ---
 

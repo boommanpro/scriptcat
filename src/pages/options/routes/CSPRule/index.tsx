@@ -15,17 +15,29 @@ import {
   Typography,
   Tag,
   Tooltip,
+  Tabs,
+  Drawer,
 } from "@arco-design/web-react";
-import { IconPlus, IconEdit, IconDelete, IconQuestionCircle } from "@arco-design/web-react/icon";
+import {
+  IconPlus,
+  IconEdit,
+  IconDelete,
+  IconQuestionCircle,
+  IconBook,
+  IconExperiment,
+} from "@arco-design/web-react/icon";
 import type { ColumnProps } from "@arco-design/web-react/es/Table";
 import type { CSPRule, CSPRuleAction } from "@App/app/repo/cspRule";
 import { formatUnixTime } from "@App/pkg/utils/day_format";
 import { CSPRuleClient } from "@App/app/service/service_worker/client";
 import { message } from "@App/pages/store/global";
 import { useTranslation } from "react-i18next";
+import PatternTester from "./components/PatternTester";
+import PatternGuide from "./components/PatternGuide";
 
 const FormItem = Form.Item;
 const { Title } = Typography;
+const TabPane = Tabs.TabPane;
 
 const CSPRuleManage: React.FC = () => {
   const { t } = useTranslation();
@@ -34,6 +46,8 @@ const CSPRuleManage: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRule, setEditingRule] = useState<CSPRule | null>(null);
   const [form] = Form.useForm();
+  const [guideDrawerVisible, setGuideDrawerVisible] = useState(false);
+  const [testerDrawerVisible, setTesterDrawerVisible] = useState(false);
 
   const cspRuleClient = new CSPRuleClient(message);
 
@@ -47,7 +61,6 @@ const CSPRuleManage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t]);
 
   useEffect(() => {
@@ -208,23 +221,43 @@ const CSPRuleManage: React.FC = () => {
   return (
     <div className="p-4 h-full overflow-auto">
       <Card>
-        <div className="flex justify-between items-center mb-4">
-          <Title heading={5}>{t("csp_rule_page.title")}</Title>
-          <Button type="primary" icon={<IconPlus />} onClick={handleAdd}>
-            {t("csp_rule_page.add_rule")}
-          </Button>
-        </div>
-        <Table
-          columns={columns}
-          data={rules}
-          loading={loading}
-          rowKey="id"
-          scroll={{ x: 1500 }}
-          pagination={{
-            pageSize: 20,
-            showTotal: true,
-          }}
-        />
+        <Tabs defaultActiveTab="rules">
+          <TabPane
+            key="rules"
+            title={
+              <Space>
+                <span>{t("csp_rule_page.title")}</span>
+              </Space>
+            }
+          >
+            <div className="flex justify-between items-center mb-4">
+              <Space>
+                <Button type="primary" icon={<IconPlus />} onClick={handleAdd}>
+                  {t("csp_rule_page.add_rule")}
+                </Button>
+              </Space>
+              <Space>
+                <Button icon={<IconExperiment />} onClick={() => setTesterDrawerVisible(true)}>
+                  {t("csp_rule_page.pattern_tester.title")}
+                </Button>
+                <Button icon={<IconBook />} onClick={() => setGuideDrawerVisible(true)}>
+                  {t("csp_rule_page.guide.title")}
+                </Button>
+              </Space>
+            </div>
+            <Table
+              columns={columns}
+              data={rules}
+              loading={loading}
+              rowKey="id"
+              scroll={{ x: 1500 }}
+              pagination={{
+                pageSize: 20,
+                showTotal: true,
+              }}
+            />
+          </TabPane>
+        </Tabs>
       </Card>
 
       <Modal
@@ -251,15 +284,17 @@ const CSPRuleManage: React.FC = () => {
             label={
               <Space>
                 {t("csp_rule_page.match_path")}
-                <Tooltip content={t("csp_rule_page.match_path_tooltip")}>
-                  <IconQuestionCircle />
+                <Tooltip content={t("csp_rule_page.match_path_detailed_tooltip")}>
+                  <IconQuestionCircle className="cursor-help" />
                 </Tooltip>
+                <Button type="text" size="small" icon={<IconBook />} onClick={() => setGuideDrawerVisible(true)} />
               </Space>
             }
             field="path"
             rules={[{ required: true, message: t("csp_rule_page.enter_path") }]}
+            extra={<div className="text-xs text-gray-500 mt-1">{t("csp_rule_page.match_path_help")}</div>}
           >
-            <Input placeholder="*://example.com/* or /https?:\\/\\/example\\.com\\/.*/i" />
+            <Input placeholder="*://example.com/* or /https?:\/\/example\.com\/.*/i" />
           </FormItem>
           <FormItem label={t("csp_rule_page.action_type")} field="action" rules={[{ required: true }]}>
             <Select>
@@ -300,6 +335,41 @@ const CSPRuleManage: React.FC = () => {
           </FormItem>
         </Form>
       </Modal>
+
+      <Drawer
+        title={
+          <Space>
+            <IconBook />
+            {t("csp_rule_page.guide.title")}
+          </Space>
+        }
+        visible={guideDrawerVisible}
+        onCancel={() => setGuideDrawerVisible(false)}
+        width={720}
+        footer={null}
+      >
+        <PatternGuide
+          onOpenTester={() => {
+            setGuideDrawerVisible(false);
+            setTesterDrawerVisible(true);
+          }}
+        />
+      </Drawer>
+
+      <Drawer
+        title={
+          <Space>
+            <IconExperiment />
+            {t("csp_rule_page.pattern_tester.title")}
+          </Space>
+        }
+        visible={testerDrawerVisible}
+        onCancel={() => setTesterDrawerVisible(false)}
+        width={600}
+        footer={null}
+      >
+        <PatternTester />
+      </Drawer>
     </div>
   );
 };

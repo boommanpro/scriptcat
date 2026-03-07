@@ -2,7 +2,8 @@
 
 ## 概述
 
-ScriptCat MCP Server 是一个基于 Spring Boot 和 MCP (Model Context Protocol) 协议的服务端实现，用于将 Chrome 插件端的脚本暴露为可调用的 MCP 工具。
+ScriptCat MCP Server 是一个基于 Spring Boot 和 MCP (Model Context
+Protocol) 协议的服务端实现，用于将 Chrome 插件端的脚本暴露为可调用的 MCP 工具。
 
 ## 服务端配置
 
@@ -28,11 +29,13 @@ ScriptCat MCP Server 是一个基于 Spring Boot 和 MCP (Model Context Protocol
 所有 MCP 接口（除健康检查和信息接口外）都需要 Bearer Token 认证。
 
 **请求头格式：**
+
 ```
 Authorization: Bearer <username>
 ```
 
 **示例：**
+
 ```bash
 curl -H "Authorization: Bearer boommanpro" http://localhost:8080/mcp/tools
 ```
@@ -41,12 +44,12 @@ curl -H "Authorization: Bearer boommanpro" http://localhost:8080/mcp/tools
 
 ### 支持的 MCP 方法
 
-| 方法 | 说明 |
-|------|------|
-| `initialize` | 初始化 MCP 连接 |
+| 方法         | 说明             |
+| ------------ | ---------------- |
+| `initialize` | 初始化 MCP 连接  |
 | `tools/list` | 获取可用工具列表 |
-| `tools/call` | 调用指定工具 |
-| `ping` | 心跳检测 |
+| `tools/call` | 调用指定工具     |
+| `ping`       | 心跳检测         |
 
 ### SSE 连接
 
@@ -57,6 +60,7 @@ curl -H "Authorization: Bearer boommanpro" http://localhost:8080/mcp/tools
 **描述：** 建立 Server-Sent Events 连接
 
 **响应示例：**
+
 ```
 id:<session-id>
 event:endpoint
@@ -91,6 +95,7 @@ curl -X POST \
 ```
 
 **响应：**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -98,9 +103,9 @@ curl -X POST \
   "result": {
     "protocolVersion": "2024-11-05",
     "capabilities": {
-      "tools": {"listChanged": true},
-      "resources": {"subscribe": false, "listChanged": false},
-      "prompts": {"listChanged": false}
+      "tools": { "listChanged": true },
+      "resources": { "subscribe": false, "listChanged": false },
+      "prompts": { "listChanged": false }
     },
     "serverInfo": {
       "name": "scriptcat-mcp-server",
@@ -126,6 +131,7 @@ curl -X POST \
 ```
 
 **响应：**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -164,6 +170,7 @@ curl -X POST \
 ```
 
 **响应：**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -189,6 +196,7 @@ curl -X POST \
 **认证：** 不需要
 
 **响应示例：**
+
 ```json
 {
   "status": "UP",
@@ -203,6 +211,7 @@ curl -X POST \
 **认证：** 不需要
 
 **响应示例：**
+
 ```json
 {
   "name": "scriptcat-mcp-server",
@@ -223,11 +232,13 @@ curl -X POST \
 **认证：** 需要 Bearer Token
 
 **请求示例：**
+
 ```bash
 curl -H "Authorization: Bearer boommanpro" http://localhost:8080/mcp/tools
 ```
 
 **响应示例：**
+
 ```json
 {
   "username": "boommanpro",
@@ -251,6 +262,7 @@ curl -H "Authorization: Bearer boommanpro" http://localhost:8080/mcp/tools
 **Content-Type：** `application/json`
 
 **请求体：**
+
 ```json
 {
   "name": "tool_name",
@@ -267,6 +279,7 @@ curl -H "Authorization: Bearer boommanpro" http://localhost:8080/mcp/tools
 当 Chrome 插件连接并发送 `SCRIPT_LIST` 消息时，服务端会自动将脚本注册为 MCP 工具。
 
 **WebSocket 消息格式：**
+
 ```json
 {
   "type": "SCRIPT_LIST",
@@ -301,15 +314,17 @@ curl -H "Authorization: Bearer boommanpro" http://localhost:8080/mcp/tools
 ### 工具命名规则
 
 工具名称由脚本名称自动生成：
+
 1. 转换为小写
 2. 将非字母数字字符替换为下划线
 3. 移除连续下划线
 4. 移除首尾下划线
 
 **示例：**
+
 - "Example Script" → "example_script"
 - "My-Test@Script" → "my_test_script"
-- "测试脚本" → "script_<scriptId>"
+- "测试脚本" → "script\_<scriptId>"
 
 ## 配置说明
 
@@ -333,7 +348,7 @@ app:
       enabled: true
       header-name: Authorization
       token-prefix: "Bearer "
-  
+
   execution:
     timeout: 30000
     max-concurrent: 100
@@ -341,17 +356,18 @@ app:
 
 ### 配置项说明
 
-| 配置项 | 说明 | 默认值 |
-|--------|------|--------|
-| `app.mcp.auth.enabled` | 是否启用认证 | true |
-| `app.mcp.auth.header-name` | 认证头名称 | Authorization |
-| `app.mcp.auth.token-prefix` | Token 前缀 | "Bearer " |
-| `app.execution.timeout` | 执行超时时间（毫秒） | 30000 |
-| `app.execution.max-concurrent` | 最大并发数 | 100 |
+| 配置项                         | 说明                 | 默认值        |
+| ------------------------------ | -------------------- | ------------- |
+| `app.mcp.auth.enabled`         | 是否启用认证         | true          |
+| `app.mcp.auth.header-name`     | 认证头名称           | Authorization |
+| `app.mcp.auth.token-prefix`    | Token 前缀           | "Bearer "     |
+| `app.execution.timeout`        | 执行超时时间（毫秒） | 30000         |
+| `app.execution.max-concurrent` | 最大并发数           | 100           |
 
 ## 工具隔离机制
 
 每个用户的工具完全隔离：
+
 - 用户只能看到通过自己 Token 认证的工具
 - 工具调用时会验证用户权限
 - 不同用户的同名工具互不影响
@@ -388,12 +404,12 @@ MCP Client → MCP Server → WebSocket → Chrome Plugin → Script Execution
 
 ### 常见错误
 
-| 错误 | 说明 |
-|------|------|
-| `Tool not found` | 工具不存在 |
-| `Client offline` | 客户端离线 |
-| `Tool execution timeout` | 执行超时 |
-| `Unauthorized` | 认证失败 |
+| 错误                     | 说明       |
+| ------------------------ | ---------- |
+| `Tool not found`         | 工具不存在 |
+| `Client offline`         | 客户端离线 |
+| `Tool execution timeout` | 执行超时   |
+| `Unauthorized`           | 认证失败   |
 
 ## 文件结构
 

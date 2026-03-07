@@ -2,6 +2,7 @@ import type { IMessageQueue } from "@Packages/message/message_queue";
 import { CSPRuleDAO, type CSPRule } from "@App/app/repo/cspRule";
 import type Logger from "@App/app/logger/logger";
 import LoggerCore from "@App/app/logger/core";
+import { PatternMatcher } from "@App/pkg/utils/patternMatcher";
 
 const CSP_RULE_ID_START = 10000;
 const MAX_DYNAMIC_RULES = 5000;
@@ -82,7 +83,7 @@ export class CSPInterceptorService {
     }
   }
 
-  private convertToDeclarativeRule(rule: CSPRule): hrome.declarativeNetRequest.Rule[] | null {
+  private convertToDeclarativeRule(rule: CSPRule): chrome.declarativeNetRequest.Rule[] | null {
     if (!rule.enabled) {
       return null;
     }
@@ -156,85 +157,25 @@ export class CSPInterceptorService {
   private buildConditions(pattern: string): Partial<chrome.declarativeNetRequest.RuleCondition>[] {
     const conditions: Partial<chrome.declarativeNetRequest.RuleCondition>[] = [];
 
-    if (pattern.startsWith("/") && pattern.endsWith("/")) {
-      const regexPattern = pattern.slice(1, -1);
-      try {
-        new RegExp(regexPattern);
-        conditions.push({
-          regexFilter: regexPattern,
-        });
-        this.logger.debug("using regex filter", { pattern, regexPattern });
-      } catch (e) {
-        this.logger.error("invalid regex pattern", { pattern, error: String(e) });
-      }
-    } else if (pattern === "*" || pattern === "*://*" || pattern === "*://*/*") {
+    const filter = PatternMatcher.toDeclarativeNetRequestFilter(pattern);
+    if (!filter) {
+      this.logger.warn("invalid pattern", { pattern });
+      return conditions;
+    }
+
+    if (filter.regexFilter) {
       conditions.push({
-        urlFilter: "*",
+        regexFilter: filter.regexFilter,
       });
-      this.logger.debug("using wildcard for all urls", { pattern });
-    } else if (pattern.startsWith("*://")) {
-      const urlFilter = this.convertWildcardToUrlFilter(pattern);
+      this.logger.debug("using regex filter", { pattern, regexFilter: filter.regexFilter });
+    } else if (filter.urlFilter) {
       conditions.push({
-        urlFilter: urlFilter,
+        urlFilter: filter.urlFilter,
       });
-      this.logger.debug("using url filter from wildcard", { pattern, urlFilter });
-    } else if (pattern.includes("*")) {
-      const urlFilter = this.convertWildcardToUrlFilter(pattern);
-      conditions.push({
-        urlFilter: urlFilter,
-      });
-      this.logger.debug("using url filter from general wildcard", { pattern, urlFilter });
-    } else {
-      if (pattern.includes("://")) {
-        conditions.push({
-          urlFilter: `|${pattern}|`,
-        });
-      } else {
-        conditions.push({
-          urlFilter: `||${pattern}`,
-        });
-      }
-      this.logger.debug("using exact/substring match", { pattern });
+      this.logger.debug("using url filter", { pattern, urlFilter: filter.urlFilter });
     }
 
     return conditions;
-  }
-
-  private convertWildcardToUrlFilter(pattern: string): string {
-    let urlFilter = pattern;
-
-    if (!urlFilter.includes("://")) {
-      if (urlFilter.startsWith("*.")) {
-        urlFilter = `*://${urlFilter}`;
-      } else if (urlFilter.startsWith("*")) {
-        urlFilter = `*://${urlFilter}`;
-      } else {
-        urlFilter = `*://${urlFilter}`;
-      }
-    }
-
-    if (urlFilter.startsWith("*://")) {
-      urlFilter = `*://${urlFilter.slice(4)}`;
-    }
-
-    urlFilter = urlFilter
-      .replace(/^(\*):\/\//, "*://")
-      .replace(/\.\*/g, "*")
-      .replace(/\.\?/g, "?");
-
-    if (!urlFilter.endsWith("*") && !urlFilter.endsWith("|")) {
-      if (urlFilter.includes("/")) {
-        const lastSlash = urlFilter.lastIndexOf("/");
-        const afterSlash = urlFilter.slice(lastSlash + 1);
-        if (afterSlash && !afterSlash.includes("*")) {
-          urlFilter = urlFilter + "*";
-        }
-      } else {
-        urlFilter = urlFilter + "/*";
-      }
-    }
-
-    return urlFilter;
   }
 
   async addRule(_rule: CSPRule): Promise<void> {
