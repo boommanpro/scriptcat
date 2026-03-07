@@ -1,5 +1,7 @@
 package org.scriptcat.cloudserver.mcp.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.extern.slf4j.Slf4j;
 import org.scriptcat.cloudserver.client.model.ClientInfo;
@@ -28,50 +30,53 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 public class McpToolExecutionService {
-    
+
     @Value("${app.execution.timeout:30000}")
     private long executionTimeout;
-    
+
     @Autowired
     private McpToolRegistry toolRegistry;
-    
+
     @Autowired
     private ScriptRegistry scriptRegistry;
-    
+
     @Autowired
     private ClientRegistry clientRegistry;
-    
+
     @Autowired
     private ExecutionRegistry executionRegistry;
-    
+
     @Autowired
     @Lazy
     private RawWebSocketHandler webSocketHandler;
-    
-    private final ConcurrentHashMap<String, CompletableFuture<McpSchema.CallToolResult>> pendingExecutions = 
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private final ConcurrentHashMap<String, CompletableFuture<McpSchema.CallToolResult>> pendingExecutions =
         new ConcurrentHashMap<>();
-    
+
     public McpSchema.CallToolResult executeTool(String username, String toolName, Map<String, Object> arguments) {
         String scriptId = toolRegistry.getScriptIdByToolName(username, toolName);
         if (scriptId == null) {
             return createErrorResult("Tool not found: " + toolName);
         }
-        
+
         ScriptInfo script = scriptRegistry.getScript(username, scriptId);
         if (script == null) {
             return createErrorResult("Script not found: " + scriptId);
         }
-        
+
         ClientInfo client = clientRegistry.get(username, script.getClientId());
         if (client == null || client.getStatus() != ClientInfo.ClientStatus.ONLINE) {
             return createErrorResult("Client offline for script: " + script.getName());
         }
-        
+
         ExecutionTask task = createExecutionTask(username, scriptId, script.getClientId(), arguments);
-        
+
         CompletableFuture<McpSchema.CallToolResult> future = new CompletableFuture<>();
         pendingExecutions.put(task.getTaskId(), future);
-        
+
         try {
             sendExecutionMessage(username, script.getClientId(), task);
             log.info("MCP tool execution started: user={}, tool={}, taskId={}", username, toolName, task.getTaskId());
@@ -80,7 +85,7 @@ public class McpToolExecutionService {
             log.error("Failed to send execution message: {}", e.getMessage(), e);
             return createErrorResult("Failed to execute tool: " + e.getMessage());
         }
-        
+
         try {
             return future.get(executionTimeout, TimeUnit.MILLISECONDS);
         } catch (java.util.concurrent.TimeoutException e) {
@@ -94,7 +99,7 @@ public class McpToolExecutionService {
             return createErrorResult("Tool execution error: " + e.getMessage());
         }
     }
-    
+
     private ExecutionTask createExecutionTask(String username, String scriptId, String clientId, Map<String, Object> params) {
         ExecutionTask task = ExecutionTask.builder()
             .taskId(IdGenerator.generateTaskId())
@@ -105,11 +110,11 @@ public class McpToolExecutionService {
             .params(params)
             .createdAt(LocalDateTime.now())
             .build();
-        
+
         executionRegistry.register(task);
         return task;
     }
-    
+
     private void sendExecutionMessage(String username, String clientId, ExecutionTask task) throws Exception {
         Message message = Message.builder()
             .id(IdGenerator.generateMessageId())
@@ -124,20 +129,20 @@ public class McpToolExecutionService {
                 "params", task.getParams() != null ? task.getParams() : Map.of()
             ))
             .build();
-        
+
         webSocketHandler.sendMessageToClient(username, clientId, message);
     }
-    
+
     public void handleExecutionResult(String taskId, boolean success, Object result, String error) {
         CompletableFuture<McpSchema.CallToolResult> future = pendingExecutions.remove(taskId);
         if (future == null) {
             log.warn("No pending execution found for taskId: {}", taskId);
             return;
         }
-        
+
         ExecutionStatus status = success ? ExecutionStatus.SUCCESS : ExecutionStatus.FAILED;
         executionRegistry.update(taskId, status, result, error);
-        
+
         McpSchema.CallToolResult toolResult;
         if (success) {
             String resultText = result != null ? String.valueOf(result) : "Execution completed successfully";
@@ -148,26 +153,26 @@ public class McpToolExecutionService {
         } else {
             toolResult = createErrorResult(error != null ? error : "Execution failed");
         }
-        
+
         future.complete(toolResult);
         log.info("MCP tool execution completed: taskId={}, success={}", taskId, success);
     }
-    
+
     private McpSchema.CallToolResult createErrorResult(String errorMessage) {
         return new McpSchema.CallToolResult(
             List.of(new McpSchema.TextContent("Error: " + errorMessage)),
             true
         );
     }
-    
+
     public List<McpSchema.Tool> getToolsForUser(String username) {
         return toolRegistry.getTools(username);
     }
-    
+
     public void registerScriptAsTool(String username, ScriptInfo script) {
         toolRegistry.registerTool(username, script);
     }
-    
+
     public void unregisterScriptTool(String username, String scriptId) {
         toolRegistry.unregisterTool(username, scriptId);
     }

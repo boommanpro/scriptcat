@@ -17,18 +17,18 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 public class ExecutionRegistry {
-    
+
     private final ConcurrentHashMap<String, ExecutionTask> tasks = new ConcurrentHashMap<>();
-    
+
     public void register(ExecutionTask task) {
         tasks.put(task.getTaskId(), task);
         log.info("Task registered: {}", task.getTaskId());
     }
-    
+
     public ExecutionTask get(String taskId) {
         return tasks.get(taskId);
     }
-    
+
     public void update(String taskId, ExecutionStatus status, Object result, String error) {
         ExecutionTask task = tasks.get(taskId);
         if (task != null) {
@@ -44,7 +44,7 @@ public class ExecutionRegistry {
             log.info("Task updated: {}, status: {}", taskId, status);
         }
     }
-    
+
     public void updateStatus(String taskId, ExecutionStatus status) {
         ExecutionTask task = tasks.get(taskId);
         if (task != null) {
@@ -55,27 +55,23 @@ public class ExecutionRegistry {
             log.info("Task status updated: {}, status: {}", taskId, status);
         }
     }
-    
-    public List<ExecutionTask> getByUsername(String username) {
-        return tasks.values().stream()
-            .filter(task -> username.equals(task.getUsername()))
-            .collect(Collectors.toList());
-    }
-    
+
+
+
     public List<ExecutionTask> getRecentTasks(int limit) {
         return tasks.values().stream()
             .sorted((t1, t2) -> t2.getCreatedAt().compareTo(t1.getCreatedAt()))
             .limit(limit)
             .collect(Collectors.toList());
     }
-    
+
     public Map<String, Object> getTaskStats() {
         int total = tasks.size();
         int pending = 0;
         int running = 0;
         int success = 0;
         int failed = 0;
-        
+
         for (ExecutionTask task : tasks.values()) {
             switch (task.getStatus()) {
                 case PENDING:
@@ -92,9 +88,9 @@ public class ExecutionRegistry {
                     break;
             }
         }
-        
+
         double successRate = total > 0 ? (double) success / total * 100 : 0;
-        
+
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", total);
         stats.put("pending", pending);
@@ -102,7 +98,7 @@ public class ExecutionRegistry {
         stats.put("success", success);
         stats.put("failed", failed);
         stats.put("successRate", Math.round(successRate * 100.0) / 100.0);
-        
+
         return stats;
     }
 }

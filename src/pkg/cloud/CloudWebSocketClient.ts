@@ -260,31 +260,28 @@ export class CloudWebSocketClient {
 
     private async handleExecuteRequest(data: any): Promise<void> {
         try {
-            // scriptId 实际上是脚本的 key（因为上报时使用 key 作为 id）
             const { taskId, scriptId: scriptKey, params } = data;
             const script = await this.getLocalScript(scriptKey);
 
             if (!script) {
-                throw new Error(`Script not found with key: ${scriptKey}`);
+                this.send({
+                    id: this.generateMessageId(),
+                    type: "EXECUTE",
+                    action: "script.result",
+                    timestamp: Date.now(),
+                    username: this.config.username,
+                    clientId: this.clientId,
+                    data: {
+                        taskId,
+                        success: false,
+                        error: `Script not found with key: ${scriptKey}`,
+                        executionTime: 0,
+                    },
+                });
+                return;
             }
 
-            // 传递 scriptKey 给 execute 事件，让 cloudControl 使用 key 查找脚本
             this.emit("execute", { taskId, scriptId: scriptKey, params, script });
-
-            this.send({
-                id: this.generateMessageId(),
-                type: "EXECUTE",
-                action: "script.result",
-                timestamp: Date.now(),
-                username: this.config.username,
-                clientId: this.clientId,
-                data: {
-                    taskId,
-                    success: true,
-                    result: "Execution initiated",
-                    executionTime: 0,
-                },
-            });
         } catch (error: any) {
             this.send({
                 id: this.generateMessageId(),
