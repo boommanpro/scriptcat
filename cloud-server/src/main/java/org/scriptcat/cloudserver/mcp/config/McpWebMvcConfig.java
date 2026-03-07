@@ -5,7 +5,6 @@ import org.springframework.ai.autoconfigure.mcp.server.MpcServerAutoConfiguratio
 import org.springframework.ai.autoconfigure.mcp.server.MpcWebMvcServerAutoConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Slf4j
@@ -15,20 +14,5 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
     MpcWebMvcServerAutoConfiguration.class
 })
 public class McpWebMvcConfig implements WebMvcConfigurer {
-    
-    private final McpAuthInterceptor mcpAuthInterceptor;
-    
-    public McpWebMvcConfig(McpAuthInterceptor mcpAuthInterceptor) {
-        this.mcpAuthInterceptor = mcpAuthInterceptor;
-    }
-    
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(mcpAuthInterceptor)
-            .addPathPatterns("/sse")
-            .addPathPatterns("/mcp/**")
-            .excludePathPatterns("/mcp/health", "/mcp/info");
-        
-        log.info("MCP authentication interceptor registered for /sse and /mcp/**");
-    }
+
 }

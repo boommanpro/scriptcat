@@ -5,7 +5,6 @@ import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.scriptcat.cloudserver.mcp.config.McpAuthInterceptor;
 import org.scriptcat.cloudserver.mcp.service.McpToolExecutionService;
 import org.scriptcat.cloudserver.mcp.service.McpToolRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +27,9 @@ public class McpSseController {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ConcurrentHashMap<String, String> sessionToUser = new ConcurrentHashMap<>();
 
+    private static final String AUTH_HEADER_NAME = "Authorization";
+    private static final String TOKEN_PREFIX = "Bearer ";
+
     @Autowired
     private McpToolRegistry toolRegistry;
 
@@ -43,9 +45,8 @@ public class McpSseController {
             @RequestBody Map<String, Object> message,
             @RequestParam(required = false) String sessionId) throws IOException {
 
-        String username = McpAuthInterceptor.getUsername(request);
+        String username = authenticate(request, response);
         if (username == null) {
-            sendErrorResponse(response, "Unauthorized");
             return;
         }
 
@@ -180,5 +181,41 @@ public class McpSseController {
             }
         }
         return null;
+    }
+
+    /**
+     * Authenticate MCP request using Bearer token
+     * @return username if authenticated, null otherwise
+     */
+    private String authenticate(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String authHeader = request.getHeader(AUTH_HEADER_NAME);
+
+        if (authHeader == null || authHeader.isEmpty()) {
+            log.warn("MCP request missing Authorization header from {}", request.getRemoteAddr());
+            sendAuthErrorResponse(response, "Missing Authorization header");
+            return null;
+        }
+
+        if (!authHeader.startsWith(TOKEN_PREFIX)) {
+            log.warn("MCP request invalid Authorization header format from {}", request.getRemoteAddr());
+            sendAuthErrorResponse(response, "Invalid Authorization header format");
+            return null;
+        }
+
+        String username = authHeader.substring(TOKEN_PREFIX.length()).trim();
+        if (username.isEmpty()) {
+            log.warn("MCP request empty username in token from {}", request.getRemoteAddr());
+            sendAuthErrorResponse(response, "Empty username in token");
+            return null;
+        }
+
+        log.debug("MCP request authenticated for user: {}", username);
+        return username;
+    }
+
+    private void sendAuthErrorResponse(HttpServletResponse response, String errorMessage) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\":\"" + errorMessage + "\"}");
     }
 }

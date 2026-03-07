@@ -3,7 +3,6 @@ package org.scriptcat.cloudserver.mcp.service;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.scriptcat.cloudserver.mcp.config.McpAuthInterceptor;
 import org.scriptcat.cloudserver.script.model.ScriptInfo;
 import org.scriptcat.cloudserver.script.service.ScriptRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +18,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Service
 public class McpDynamicToolProvider {
+    
+    private static final String USERNAME_ATTRIBUTE = "mcp_username";
     
     @Autowired
     private ScriptRegistry scriptRegistry;
@@ -62,7 +63,7 @@ public class McpDynamicToolProvider {
             return null;
         }
         HttpServletRequest request = attrs.getRequest();
-        return McpAuthInterceptor.getUsername(request);
+        return (String) request.getAttribute(USERNAME_ATTRIBUTE);
     }
     
     private McpSchema.CallToolResult createErrorResult(String message) {
