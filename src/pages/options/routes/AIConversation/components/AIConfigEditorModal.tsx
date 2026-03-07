@@ -147,24 +147,6 @@ export const AIConfigEditorModal = ({
 
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-3 flex-1">
-            <span className="font-medium mb-1">最大令牌数 (Max Tokens)</span>
-            <Input
-              type="number"
-              placeholder="-1表示无限制"
-              value={config.maxTokens.toString()}
-              onChange={(value) => {
-                const num = parseInt(value, 10);
-                if (!isNaN(num)) {
-                  onChange({ ...config, maxTokens: num });
-                }
-              }}
-            />
-          </div>
-          <span className="text-xs max-w-60 text-right ml-6 flex-shrink-0">-1表示无限制</span>
-        </div>
-
-        <div className="flex items-start justify-between">
-          <div className="flex flex-col gap-3 flex-1">
             <span className="font-medium mb-1">启用知识库</span>
             <Switch
               checked={config.enableKnowledgeBase}

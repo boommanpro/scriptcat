@@ -26,7 +26,6 @@ export interface AIConfig {
   model: string;
   systemPrompt: string;
   temperature: number;
-  maxTokens: number;
   enableKnowledgeBase: boolean;
 }
 

@@ -271,7 +271,6 @@ export function SidePanelApp() {
 4. 如果需要操作页面元素，使用用户提供的选择器
 5. 不要包含任何解释性文字，除非用户明确要求`,
           temperature: 0.7,
-          maxTokens: -1,
           enableKnowledgeBase: true,
         };
 
@@ -306,7 +305,6 @@ export function SidePanelApp() {
           })),
         ],
         temperature: config.temperature || 0.7,
-        max_tokens: config.maxTokens || -1,
         stream: true,
       };
 

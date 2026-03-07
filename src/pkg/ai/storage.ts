@@ -17,7 +17,6 @@ export const createDefaultConfig = (): AIConfig => ({
   model: "qwen/qwen3-4b-2507",
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
   temperature: 0.7,
-  maxTokens: -1,
   enableKnowledgeBase: true,
 });
 
@@ -30,7 +29,6 @@ export const createNewConfig = (): AIConfig => ({
   model: "qwen/qwen3-4b-2507",
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
   temperature: 0.7,
-  maxTokens: -1,
   enableKnowledgeBase: true,
 });
 
@@ -49,7 +47,6 @@ export const loadAISettings = async (): Promise<AIConfig[]> => {
         model: oldSettings.model || "qwen/qwen3-4b-2507",
         systemPrompt: oldSettings.systemPrompt || DEFAULT_SYSTEM_PROMPT,
         temperature: oldSettings.temperature ?? 0.7,
-        maxTokens: oldSettings.maxTokens ?? -1,
         enableKnowledgeBase: oldSettings.enableKnowledgeBase ?? true,
       };
       const configs = [newConfig];
