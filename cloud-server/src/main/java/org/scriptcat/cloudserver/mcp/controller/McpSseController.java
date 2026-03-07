@@ -60,10 +60,18 @@ public class McpSseController {
 
         try {
             Object result = handleMcpMethod(username, method, message);
-            sendSuccessResponse(response, id, result);
+            // Don't send response for notifications (no id)
+            if (id != null) {
+                sendSuccessResponse(response, id, result);
+            } else {
+                log.trace("Notification processed, no response sent: {}", method);
+            }
         } catch (Exception e) {
             log.error("Error handling MCP method {}: {}", method, e.getMessage(), e);
-            sendErrorResponse(response, id, e.getMessage());
+            // Only send error response if there's an id (not for notifications)
+            if (id != null) {
+                sendErrorResponse(response, id, e.getMessage());
+            }
         }
     }
 
@@ -77,7 +85,16 @@ public class McpSseController {
                 return handleToolsCall(username, message);
             case "ping":
                 return new HashMap<String, Object>();
+            case "notifications/cancelled":
+                // Handle cancellation notification - no response needed
+                log.debug("Received cancellation notification: {}", message.get("params"));
+                return null;
             default:
+                // Check if it's a notification method (starts with "notifications/")
+                if (method != null && method.startsWith("notifications/")) {
+                    log.debug("Received notification: {}", method);
+                    return null; // Notifications don't require a response
+                }
                 throw new IllegalArgumentException("Unknown method: " + method);
         }
     }
