@@ -12,17 +12,12 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class McpAuthInterceptor implements HandlerInterceptor {
     
     private static final String USERNAME_ATTRIBUTE = "mcp_username";
-    
-    @Autowired
-    private McpAuthProperties authProperties;
+    private static final String AUTH_HEADER_NAME = "Authorization";
+    private static final String TOKEN_PREFIX = "Bearer ";
     
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        if (!authProperties.isEnabled()) {
-            return true;
-        }
-        
-        String authHeader = request.getHeader(authProperties.getHeaderName());
+        String authHeader = request.getHeader(AUTH_HEADER_NAME);
         if (authHeader == null || authHeader.isEmpty()) {
             log.warn("MCP request missing Authorization header from {}", request.getRemoteAddr());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -31,8 +26,7 @@ public class McpAuthInterceptor implements HandlerInterceptor {
             return false;
         }
         
-        String tokenPrefix = authProperties.getTokenPrefix();
-        if (!authHeader.startsWith(tokenPrefix)) {
+        if (!authHeader.startsWith(TOKEN_PREFIX)) {
             log.warn("MCP request invalid Authorization header format from {}", request.getRemoteAddr());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
@@ -40,7 +34,7 @@ public class McpAuthInterceptor implements HandlerInterceptor {
             return false;
         }
         
-        String username = authHeader.substring(tokenPrefix.length()).trim();
+        String username = authHeader.substring(TOKEN_PREFIX.length()).trim();
         if (username.isEmpty()) {
             log.warn("MCP request empty username in token from {}", request.getRemoteAddr());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

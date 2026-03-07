@@ -44,9 +44,3 @@ app:
   execution:
     timeout: 30000
     max-concurrent: 100
-
-  mcp:
-    auth:
-      enabled: true
-      header-name: Authorization
-      token-prefix: "Bearer "
