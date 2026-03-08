@@ -66,7 +66,7 @@ async function setupOffscreenDocument() {
 async function registerNetworkMonitorScript() {
   try {
     // 先注销已存在的脚本
-    await chrome.scripting.unregisterContentScripts({ ids: ["network-monitor"] }).catch(() => { });
+    await chrome.scripting.unregisterContentScripts({ ids: ["network-monitor"] }).catch(() => {});
 
     // 注册新的 content script
     await chrome.scripting.registerContentScripts([
@@ -872,7 +872,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
           elements: req.elements,
         },
       })
-      .catch(() => { });
+      .catch(() => {});
   }
 
   if (req.type === "NETWORK_REQUEST" && sender.tab?.id) {

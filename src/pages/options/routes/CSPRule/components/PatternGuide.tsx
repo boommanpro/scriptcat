@@ -115,7 +115,12 @@ const PatternGuide: React.FC<PatternGuideProps> = ({ onOpenTester }) => {
     },
     {
       pattern: "**.example.com/*",
-      matches: ["https://example.com/path", "https://www.example.com/path", "https://api.example.com/test", "https://deep.sub.example.com/"],
+      matches: [
+        "https://example.com/path",
+        "https://www.example.com/path",
+        "https://api.example.com/test",
+        "https://deep.sub.example.com/",
+      ],
       notMatches: ["https://other.com/path"],
     },
   ];

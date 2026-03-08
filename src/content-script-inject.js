@@ -207,10 +207,10 @@ function handleMouseOver(event) {
   if (!selectionState.isSelecting) return;
 
   const element = event.target;
-  
+
   // 如果已经是当前高亮的元素，不需要重复处理
   if (selectionState.currentHoveredElement === element) return;
-  
+
   // 更新当前高亮的元素
   selectionState.currentHoveredElement = element;
 
@@ -225,12 +225,12 @@ function handleMouseOut(event) {
   if (!selectionState.isSelecting) return;
 
   const relatedTarget = event.relatedTarget;
-  
+
   // 如果鼠标还在当前元素或其子元素内，不隐藏高亮
   if (relatedTarget && selectionState.currentHoveredElement?.contains(relatedTarget)) {
     return;
   }
-  
+
   // 只有当鼠标完全离开当前高亮元素时，才隐藏高亮
   if (relatedTarget !== selectionState.currentHoveredElement) {
     const overlay = selectionState.highlightOverlay;
@@ -242,7 +242,7 @@ function handleMouseOut(event) {
     if (tooltip) {
       hideTooltip(tooltip);
     }
-    
+
     selectionState.currentHoveredElement = null;
   }
 }

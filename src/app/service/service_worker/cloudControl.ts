@@ -1,7 +1,7 @@
 import { CloudWebSocketClient } from "@App/pkg/cloud/CloudWebSocketClient";
 import type { CloudConnectionConfig, ScriptFetcher } from "@App/pkg/cloud/CloudWebSocketClient";
 import { AutomationScriptDAO } from "@App/app/repo/automationScript";
-import { Group } from "@Packages/message/server";
+import type { Group } from "@Packages/message/server";
 import type { IMessageQueue } from "@Packages/message/message_queue";
 import { AutomationScriptService } from "./automationScript";
 

@@ -18,6 +18,7 @@ import { type ScriptInfo } from "@App/pkg/utils/scriptInstall";
 import type { ScriptService, TCheckScriptUpdateOption, TOpenBatchUpdatePageOption } from "./script";
 import type { CSPRule } from "@App/app/repo/cspRule";
 import type { AutomationScript, AutomationTestLog } from "@App/app/repo/automationScript";
+import type { Workflow, WorkflowExecutionLog } from "@App/app/repo/workflow";
 
 export class ServiceWorkerClient extends Client {
   constructor(msgSender: MessageSend) {
@@ -520,5 +521,70 @@ export class AutomationScriptClient extends Client {
     tabId?: number
   ): Promise<{ success: boolean; result?: any; error?: string }> {
     return this.doThrow("executeScript", { scriptKey, input, tabId });
+  }
+}
+
+export class WorkflowClient extends Client {
+  constructor(msgSender: MessageSend) {
+    super(msgSender, "serviceWorker/workflow");
+  }
+
+  getAllWorkflows(): Promise<Workflow[]> {
+    return this.doThrow("getAllWorkflows");
+  }
+
+  getEnabledWorkflows(): Promise<Workflow[]> {
+    return this.doThrow("getEnabledWorkflows");
+  }
+
+  getByKey(key: string): Promise<Workflow | undefined> {
+    return this.do("getByKey", key);
+  }
+
+  createWorkflow(workflow: Omit<Workflow, "id" | "createtime" | "updatetime">): Promise<Workflow> {
+    return this.doThrow("createWorkflow", workflow);
+  }
+
+  updateWorkflow(id: string, changes: Partial<Workflow>): Promise<Workflow | false | undefined> {
+    return this.do("updateWorkflow", { id, changes });
+  }
+
+  deleteWorkflow(id: string): Promise<void> {
+    return this.do("deleteWorkflow", id);
+  }
+
+  toggleWorkflow(id: string, enabled: boolean): Promise<Workflow | false | undefined> {
+    return this.do("toggleWorkflow", { id, enabled });
+  }
+
+  getExecutionLogs(workflowId: string, limit?: number): Promise<WorkflowExecutionLog[]> {
+    return this.doThrow("getExecutionLogs", { workflowId, limit });
+  }
+
+  getExecutionLogById(id: string): Promise<WorkflowExecutionLog | undefined> {
+    return this.do("getExecutionLogById", id);
+  }
+
+  createExecutionLog(log: Omit<WorkflowExecutionLog, "id" | "createtime">): Promise<WorkflowExecutionLog> {
+    return this.doThrow("createExecutionLog", log);
+  }
+
+  updateExecutionLog(
+    id: string,
+    changes: Partial<WorkflowExecutionLog>
+  ): Promise<WorkflowExecutionLog | false | undefined> {
+    return this.do("updateExecutionLog", { id, changes });
+  }
+
+  deleteExecutionLog(id: string): Promise<void> {
+    return this.do("deleteExecutionLog", id);
+  }
+
+  runWorkflow(workflowId: string, inputJson: string): Promise<WorkflowExecutionLog> {
+    return this.doThrow("runWorkflow", { workflowId, inputJson });
+  }
+
+  stopWorkflowExecution(executionLogId: string): Promise<void> {
+    return this.do("stopWorkflowExecution", executionLogId);
   }
 }

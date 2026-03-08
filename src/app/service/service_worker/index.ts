@@ -23,6 +23,7 @@ import { CSPRuleService } from "./cspRule";
 import { CSPInterceptorService } from "./cspInterceptor";
 import { AutomationScriptService } from "./automationScript";
 import { CloudControlBackgroundService } from "./cloudControl";
+import { WorkflowService } from "./workflow";
 
 // service worker的管理器
 export default class ServiceWorkerManager {
@@ -101,6 +102,8 @@ export default class ServiceWorkerManager {
     cspInterceptor.init();
     const automationScript = new AutomationScriptService(this.api.group("automationScript"), this.mq);
     automationScript.init();
+    const workflow = new WorkflowService(this.api.group("workflow"), this.mq, automationScript);
+    workflow.init();
     const cloudControl = new CloudControlBackgroundService(this.api.group("cloudControl"), this.mq);
     cloudControl.connect().catch((e) => console.error("Cloud control connection error:", e));
 
