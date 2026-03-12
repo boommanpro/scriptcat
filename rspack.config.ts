@@ -20,14 +20,14 @@ const assets = `${src}/assets`;
 export default defineConfig({
   ...(isDev
     ? {
-        watch: true,
-        mode: "development",
-        devtool: process.env.NO_MAP === "true" ? false : "inline-source-map",
-      }
+      watch: true,
+      mode: "development",
+      devtool: process.env.NO_MAP === "true" ? false : "inline-source-map",
+    }
     : {
-        mode: "production",
-        devtool: false,
-      }),
+      mode: "production",
+      devtool: false,
+    }),
   context: dirname,
   entry: {
     service_worker: `${src}/service_worker.ts`,
@@ -36,6 +36,7 @@ export default defineConfig({
     content: `${src}/content.ts`,
     inject: `${src}/inject.ts`,
     "content/network-monitor": `${src}/content/network-monitor.ts`,
+    "content/browsing-stats": `${src}/content/browsing-stats.ts`,
     popup: `${src}/pages/popup/main.tsx`,
     install: `${src}/pages/install/main.tsx`,
     batchupdate: `${src}/pages/batchupdate/main.tsx`,

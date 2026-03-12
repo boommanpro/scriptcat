@@ -24,6 +24,7 @@ import { CSPInterceptorService } from "./cspInterceptor";
 import { AutomationScriptService } from "./automationScript";
 import { CloudControlBackgroundService } from "./cloudControl";
 import { WorkflowService } from "./workflow";
+import { BrowsingStatsService } from "./browsingStats";
 
 // service worker的管理器
 export default class ServiceWorkerManager {
@@ -31,7 +32,7 @@ export default class ServiceWorkerManager {
     private api: Server,
     private mq: IMessageQueue,
     private sender: ServiceWorkerMessageSend
-  ) {}
+  ) { }
 
   logger(data: Logger) {
     // 发送日志消息
@@ -106,6 +107,9 @@ export default class ServiceWorkerManager {
     workflow.init();
     const cloudControl = new CloudControlBackgroundService(this.api.group("cloudControl"), this.mq);
     cloudControl.connect().catch((e) => console.error("Cloud control connection error:", e));
+
+    const browsingStats = new BrowsingStatsService(this.mq, this.api.group("browsingStats"));
+    browsingStats.init().catch((e) => console.error("BrowsingStatsService init error:", e));
 
     const regularScriptUpdateCheck = async () => {
       const res = await onRegularUpdateCheckAlarm(systemConfig, script, subscribe);

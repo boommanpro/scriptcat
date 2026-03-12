@@ -10,7 +10,9 @@
   },
   "background": {
     "service_worker": "src/service_worker.js",
-    "scripts": ["src/service_worker.js"]
+    "scripts": [
+      "src/service_worker.js"
+    ]
   },
   "incognito": "split",
   "action": {
@@ -46,23 +48,49 @@
   "side_panel": {
     "default_path": "src/sidepanel.html"
   },
-  "optional_permissions": ["background", "userScripts"],
-  "host_permissions": ["<all_urls>"],
+  "optional_permissions": [
+    "background",
+    "userScripts"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["src/content/network-monitor.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/content/network-monitor.js"
+      ],
       "run_at": "document_start",
       "all_frames": true
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/content/browsing-stats.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
     }
   ],
   "sandbox": {
-    "pages": ["src/sandbox.html"]
+    "pages": [
+      "src/sandbox.html"
+    ]
   },
   "web_accessible_resources": [
     {
-      "resources": ["chobitsu.js", "src/network-monitor-inject.js"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "chobitsu.js",
+        "src/network-monitor-inject.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

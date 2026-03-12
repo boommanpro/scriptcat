@@ -11,6 +11,7 @@ import AutomationScriptEditor from "@App/pages/options/routes/AutomationScript/E
 import CloudControl from "@App/pages/options/routes/CloudControl/index";
 import WorkflowList from "@App/pages/options/routes/Workflow/index";
 import WorkflowEditor from "@App/pages/options/routes/Workflow/Editor";
+import BrowsingStats from "@App/pages/options/routes/BrowsingStats/index";
 import { Layout, Menu } from "@arco-design/web-react";
 import {
   IconCode,
@@ -28,6 +29,7 @@ import {
   IconThunderbolt,
   IconCloud,
   IconApps,
+  IconMosaic,
 } from "@arco-design/web-react/icon";
 import React, { useRef, useState } from "react";
 import { HashRouter, Route, Routes } from "react-router-dom";
@@ -107,6 +109,11 @@ const Sider: React.FC = () => {
             <CustomLink to="/ai-conversation" className="menu-ai-conversation">
               <MenuItem key="/ai-conversation">
                 <IconRobot /> {t("ai_settings")}
+              </MenuItem>
+            </CustomLink>
+            <CustomLink to="/browsing-stats" className="menu-browsing-stats">
+              <MenuItem key="/browsing-stats">
+                <IconMosaic /> {t("browsing_stats")}
               </MenuItem>
             </CustomLink>
             <CustomLink to="/setting" className="menu-setting">
@@ -225,6 +232,7 @@ const Sider: React.FC = () => {
           </Route>
           <Route path="/cloud-control" element={<CloudControl />} />
           <Route path="/ai-conversation" element={<AIConversation />} />
+          <Route path="/browsing-stats" element={<BrowsingStats />} />
           <Route path="/setting" element={<Setting />} />
         </Routes>
       </Layout.Content>
