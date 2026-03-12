@@ -883,5 +883,10 @@
   "confirm_clear_data": "确认清除数据",
   "confirm_clear_data_desc": "确定要清除所有浏览统计数据吗？此操作不可恢复。",
   "clear_success": "清除成功",
-  "clear_failed": "清除失败"
+  "clear_failed": "清除失败",
+  "top_domains_chart": "域名分布图",
+  "no_data": "暂无数据",
+  "entries": "条记录",
+  "back": "返回",
+  "visits": "次访问"
 }

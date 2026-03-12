@@ -28,6 +28,19 @@ import {
 } from "@arco-design/web-react/icon";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 import type {
   DailyStats,
   BrowsingStatsConfig,
@@ -38,6 +51,7 @@ import type {
 import { formatDateForStats } from "@App/app/repo/browsingStats";
 import TimelineView from "./components/TimelineView";
 import PageDetails from "./components/PageDetails";
+import DomainDetails from "./components/DomainDetails";
 
 const { Row, Col } = Grid;
 const { Title, Text } = Typography;
@@ -51,6 +65,7 @@ const BrowsingStats: React.FC = () => {
   const [statsRange, setStatsRange] = useState<DailyStats[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedPageUrl, setSelectedPageUrl] = useState<string | null>(null);
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showExport, setShowExport] = useState(false);
 
@@ -78,7 +93,10 @@ const BrowsingStats: React.FC = () => {
   const loadDailyStats = async (date: string) => {
     setLoading(true);
     try {
+      console.log("[BrowsingStats] Loading daily stats for date:", date);
       const response = await sendMessage("getDailyStats", { date });
+      console.log("[BrowsingStats] Daily stats response:", response);
+      console.log("[BrowsingStats] Timeline length:", response?.timeline?.length);
       setDailyStats(response as DailyStats);
     } catch (error) {
       console.error("Failed to load daily stats:", error);
@@ -324,14 +342,8 @@ const BrowsingStats: React.FC = () => {
 
                 <Row gutter={16}>
                   <Col span={12}>
-                    <Card bordered={false} title={t("top_domains")}>
-                      <Table
-                        data={dailyStats.topDomains}
-                        columns={domainColumns}
-                        pagination={false}
-                        size="small"
-                        scroll={{ y: 300 }}
-                      />
+                    <Card bordered={false} title={t("top_domains_chart")}>
+                      <DomainPieChart data={dailyStats.topDomains} />
                     </Card>
                   </Col>
                   <Col span={12}>
@@ -340,6 +352,20 @@ const BrowsingStats: React.FC = () => {
                     </Card>
                   </Col>
                 </Row>
+
+                <Card bordered={false} title={t("top_domains")}>
+                  <Table
+                    data={dailyStats.topDomains}
+                    columns={domainColumns}
+                    pagination={false}
+                    size="small"
+                    scroll={{ y: 300 }}
+                    onRow={(record: DomainStats) => ({
+                      onClick: () => setSelectedDomain(record.domain),
+                      style: { cursor: "pointer" },
+                    })}
+                  />
+                </Card>
 
                 <Card bordered={false} title={t("top_pages")}>
                   <Table
@@ -376,6 +402,21 @@ const BrowsingStats: React.FC = () => {
         />
       )}
 
+      {selectedDomain && dailyStats && (
+        <DomainDetails
+          domain={selectedDomain}
+          entries={dailyStats.timeline.filter((entry) => {
+            try {
+              return new URL(entry.url).hostname === selectedDomain;
+            } catch {
+              return false;
+            }
+          })}
+          onBack={() => setSelectedDomain(null)}
+          onSelectPage={setSelectedPageUrl}
+        />
+      )}
+
       <SettingsModal
         visible={showSettings}
         config={config}
@@ -396,34 +437,109 @@ const BrowsingStats: React.FC = () => {
 };
 
 const HourlyDistributionChart: React.FC<{ data: number[] }> = ({ data }) => {
-  const max = Math.max(...data, 1);
+  const { t } = useTranslation();
+  
+  const chartData = data.map((value, hour) => ({
+    hour: `${hour}:00`,
+    visits: value,
+  }));
 
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", height: 200, gap: 4 }}>
-      {data.map((value, hour) => (
-        <div
-          key={hour}
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            height: "100%",
+    <ResponsiveContainer width="100%" height={250}>
+      <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-2)" />
+        <XAxis 
+          dataKey="hour" 
+          tick={{ fontSize: 10, fill: "var(--color-text-3)" }}
+          interval={2}
+        />
+        <YAxis 
+          tick={{ fontSize: 10, fill: "var(--color-text-3)" }}
+        />
+        <Tooltip
+          contentStyle={{
+            backgroundColor: "var(--color-bg-popup)",
+            border: "1px solid var(--color-border-2)",
+            borderRadius: 4,
           }}
+          labelStyle={{ color: "var(--color-text-1)" }}
+        />
+        <Bar 
+          dataKey="visits" 
+          fill="var(--color-primary-6)" 
+          radius={[4, 4, 0, 0]}
+          name={t("visit_count")}
+        />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
+
+const DomainPieChart: React.FC<{ data: DomainStats[] }> = ({ data }) => {
+  const { t } = useTranslation();
+  
+  const COLORS = [
+    "#165dff", "#00b42a", "#ff7d00", "#86909c", "#eb0aa4",
+    "#7d30f5", "#0099ff", "#ff5722", "#4caf50", "#9c27b0"
+  ];
+
+  const formatDuration = (ms: number): string => {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    if (hours > 0) {
+      return `${hours}h ${minutes % 60}m`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds % 60}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+
+  const chartData = data.slice(0, 8).map((item) => ({
+    name: item.domain.length > 15 ? item.domain.substring(0, 15) + "..." : item.domain,
+    value: item.totalDuration,
+    visits: item.visitCount,
+    fullDomain: item.domain,
+  }));
+
+  if (chartData.length === 0) {
+    return <Empty description={t("no_data")} />;
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <PieChart>
+        <Pie
+          data={chartData}
+          cx="50%"
+          cy="50%"
+          innerRadius={60}
+          outerRadius={100}
+          paddingAngle={2}
+          dataKey="value"
+          nameKey="name"
+          label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+          labelLine={false}
         >
-          <div
-            style={{
-              width: "100%",
-              background: "var(--color-primary-6)",
-              height: `${(value / max) * 100}%`,
-              minHeight: value > 0 ? 4 : 0,
-              borderRadius: 2,
-            }}
-          />
-          <Text style={{ fontSize: 10, marginTop: 4 }}>{hour}</Text>
-        </div>
-      ))}
-    </div>
+          {chartData.map((_, index) => (
+            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          ))}
+        </Pie>
+        <Tooltip
+          formatter={(value: number) => formatDuration(value)}
+          contentStyle={{
+            backgroundColor: "var(--color-bg-popup)",
+            border: "1px solid var(--color-border-2)",
+            borderRadius: 4,
+          }}
+        />
+        <Legend 
+          formatter={(value) => <span style={{ color: "var(--color-text-1)", fontSize: 12 }}>{value}</span>}
+        />
+      </PieChart>
+    </ResponsiveContainer>
   );
 };
 

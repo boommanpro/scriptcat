@@ -102,9 +102,16 @@ export class PageVisitDAO extends Repo<PageVisitRecord> {
     const startOfDay = new Date(date).setHours(0, 0, 0, 0);
     const endOfDay = new Date(date).setHours(23, 59, 59, 999);
 
-    return this.find((_, value) => {
-      return value.startTime >= startOfDay && value.startTime <= endOfDay;
+    console.log(`[BrowsingStats] findByDate: date=${date}, startOfDay=${startOfDay}, endOfDay=${endOfDay}`);
+
+    const results = await this.find((_, value) => {
+      const match = value.startTime >= startOfDay && value.startTime <= endOfDay;
+      console.log(`[BrowsingStats] Checking record: startTime=${value.startTime}, match=${match}`);
+      return match;
     });
+
+    console.log(`[BrowsingStats] findByDate results: ${results.length} records`);
+    return results;
   }
 
   async findByDateRange(startDate: string, endDate: string): Promise<PageVisitRecord[]> {
@@ -152,7 +159,9 @@ export class DailyStatsDAO extends Repo<DailyStats> {
   }
 
   async findByDate(date: string): Promise<DailyStats | undefined> {
-    return this.get(date);
+    const result = await this.get(date);
+    console.log(`[BrowsingStats] DailyStatsDAO.findByDate: date=${date}, result=`, result);
+    return result;
   }
 
   async findByDateRange(startDate: string, endDate: string): Promise<DailyStats[]> {

@@ -1,10 +1,10 @@
 import React from "react";
-import { Card, Timeline, Typography, Space, Tag, Empty } from "@arco-design/web-react";
-import { IconClockCircle, IconLink } from "@arco-design/web-react/icon";
+import { Card, Typography, Space, Tag, Empty } from "@arco-design/web-react";
+import { IconLink } from "@arco-design/web-react/icon";
 import type { TimelineEntry } from "@App/app/repo/browsingStats";
 import { useTranslation } from "react-i18next";
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface TimelineViewProps {
   entries: TimelineEntry[];
@@ -44,7 +44,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ entries, onSelectPage }) =>
     }
   };
 
-  if (entries.length === 0) {
+  if (!entries || entries.length === 0) {
     return (
       <Card bordered={false} style={{ height: "100%" }}>
         <Empty description={t("no_timeline_data")} />
@@ -53,67 +53,43 @@ const TimelineView: React.FC<TimelineViewProps> = ({ entries, onSelectPage }) =>
   }
 
   return (
-    <Card bordered={false} style={{ height: "100%", overflow: "auto" }}>
-      <Timeline mode="left">
-        {entries.map((entry, index) => {
-          const prevEntry = index > 0 ? entries[index - 1] : null;
-          const showGap = prevEntry && entry.startTime - (prevEntry.endTime || prevEntry.startTime) > 5 * 60 * 1000;
-
+    <Card bordered={false} style={{ height: "calc(100vh - 200px)", overflow: "auto" }}>
+      <div style={{ padding: 16 }}>
+        <Text bold style={{ marginBottom: 16, display: "block" }}>
+          {t("timeline")} ({entries.length})
+        </Text>
+        {entries.map((entry) => {
           return (
-            <React.Fragment key={entry.id}>
-              {showGap && (
-                <Timeline.Item
-                  dot={<IconClockCircle style={{ fontSize: 16 }} />}
-                  style={{ opacity: 0.5 }}
-                >
-                  <Text type="secondary">
-                    {t("time_gap")}
+            <div
+              key={entry.id}
+              style={{
+                padding: "12px 0",
+                borderBottom: "1px solid var(--color-border-2)",
+                cursor: "pointer",
+              }}
+              onClick={() => onSelectPage(entry.url)}
+            >
+              <Space direction="vertical" style={{ width: "100%" }}>
+                <Space style={{ width: "100%", justifyContent: "space-between" }}>
+                  <Text bold style={{ maxWidth: 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {entry.title || entry.url}
                   </Text>
-                </Timeline.Item>
-              )}
-              <Timeline.Item
-                label={formatTime(entry.startTime)}
-                dot={
-                  <div
-                    style={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: "50%",
-                      background: "var(--color-primary-6)",
-                    }}
-                  />
-                }
-              >
-                <Card
-                  hoverable
-                  style={{ marginBottom: 8, cursor: "pointer" }}
-                  onClick={() => onSelectPage(entry.url)}
-                >
-                  <Space direction="vertical" style={{ width: "100%" }}>
-                    <Space style={{ width: "100%", justifyContent: "space-between" }}>
-                      <Text bold style={{ maxWidth: 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {entry.title || entry.url}
-                      </Text>
-                      <Tag color="arcoblue">{formatDuration(entry.duration)}</Tag>
-                    </Space>
-                    <Space>
-                      <IconLink style={{ color: "var(--color-text-3)" }} />
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        {getDomainFromUrl(entry.url)}
-                      </Text>
-                    </Space>
-                    {entry.referrer && (
-                      <Text type="secondary" style={{ fontSize: 11 }}>
-                        {t("from")}: {getDomainFromUrl(entry.referrer)}
-                      </Text>
-                    )}
-                  </Space>
-                </Card>
-              </Timeline.Item>
-            </React.Fragment>
+                  <Tag color="arcoblue">{formatDuration(entry.duration)}</Tag>
+                </Space>
+                <Space>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {formatTime(entry.startTime)}
+                  </Text>
+                  <IconLink style={{ color: "var(--color-text-3)" }} />
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {getDomainFromUrl(entry.url)}
+                  </Text>
+                </Space>
+              </Space>
+            </div>
           );
         })}
-      </Timeline>
+      </div>
     </Card>
   );
 };

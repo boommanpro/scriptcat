@@ -546,10 +546,14 @@ export class BrowsingStatsService {
     }
 
     async getDailyStats(date: string): Promise<DailyStats | undefined> {
+        this.logger.info("getDailyStats called", { date });
         let stats = await this.dailyStatsDAO.findByDate(date);
+        this.logger.info("DailyStatsDAO.findByDate result", { date, found: !!stats });
         if (!stats) {
+            this.logger.info("No stats found, aggregating...", { date });
             stats = await this.aggregateDailyStats(date);
         }
+        this.logger.info("getDailyStats result", { date, totalVisits: stats?.totalVisits, timelineLength: stats?.timeline?.length });
         return stats;
     }
 
@@ -558,7 +562,9 @@ export class BrowsingStatsService {
     }
 
     private async aggregateDailyStats(date: string): Promise<DailyStats> {
+        this.logger.info("aggregateDailyStats called", { date });
         const records = await this.pageVisitDAO.findByDate(date);
+        this.logger.info("Found records for date", { date, recordCount: records.length });
         const transitions = await this.pageTransitionDAO.findByDate(date);
 
         const domainMap = new Map<string, DomainStats>();

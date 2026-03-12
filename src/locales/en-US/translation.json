@@ -881,5 +881,10 @@
   "confirm_clear_data": "Confirm Clear Data",
   "confirm_clear_data_desc": "Are you sure you want to clear all browsing statistics? This action cannot be undone.",
   "clear_success": "Clear successful",
-  "clear_failed": "Clear failed"
+  "clear_failed": "Clear failed",
+  "top_domains_chart": "Domain Distribution Chart",
+  "no_data": "No data",
+  "entries": "entries",
+  "back": "Back",
+  "visits": "visits"
 }
