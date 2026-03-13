@@ -142,14 +142,20 @@ PACK_FIREFOX &&
     .pipe(createWriteStream(`./dist/${packageInfo.name}-v${packageInfo.version}-firefox.zip`));
 
 // 处理crx
-const crx = new ChromeExtension({
-  privateKey: await fs.readFile("./dist/scriptcat.pem", { encoding: "utf8" }),
-});
-
-await crx
-  .load("./dist/ext")
-  .then((crxFile) => crxFile.pack())
-  .then((crxBuffer) => fs.writeFile(`./dist/${packageInfo.name}-v${packageInfo.version}-chrome.crx`, crxBuffer))
-  .catch((err) => {
-    console.error(err);
+const pemPath = "./dist/scriptcat.pem";
+try {
+  await fs.access(pemPath);
+  const crx = new ChromeExtension({
+    privateKey: await fs.readFile(pemPath, { encoding: "utf8" }),
   });
+
+  await crx
+    .load("./dist/ext")
+    .then((crxFile) => crxFile.pack())
+    .then((crxBuffer) => fs.writeFile(`./dist/${packageInfo.name}-v${packageInfo.version}-chrome.crx`, crxBuffer))
+    .catch((err) => {
+      console.error("CRX generation failed:", err);
+    });
+} catch {
+  console.log("Skipping CRX generation: scriptcat.pem not found");
+}
