@@ -13,6 +13,7 @@ import {
 } from "@arco-design/web-react/icon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RiMessage2Line } from "react-icons/ri";
+import { FiCpu } from "react-icons/fi";
 import { VersionCompare, versionCompare } from "@App/pkg/utils/semver";
 import { useTranslation } from "react-i18next";
 import ScriptMenuList from "../components/ScriptMenuList";
@@ -282,14 +283,15 @@ function App() {
 
     checkScriptEnableAndUpdate();
     queryTabInfo();
+
     return () => {
       isMounted = false;
       for (const unhook of unhooks) unhook();
       unhooks.length = 0;
     };
-  }, []);
+  }, [subscribeMessage]);
 
-  const { handleEnableScriptChange, handleSettingsClick, handleNotificationClick } = {
+  const { handleEnableScriptChange, handleSettingsClick, handleNotificationClick, handleAiChatClick } = {
     handleEnableScriptChange: (val: boolean) => {
       setIsEnableScript(val);
       systemConfig.setEnableScript(val);
@@ -305,6 +307,17 @@ function App() {
         systemConfig.setCheckUpdate(updatedCheckUpdate);
         return updatedCheckUpdate;
       });
+    },
+    handleAiChatClick: async () => {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab?.id) {
+          await chrome.sidePanel.open({ tabId: tab.id });
+        }
+      } catch (error) {
+        console.error("Failed to open side panel:", error);
+        window.open("/src/sidepanel.html", "_blank");
+      }
     },
   };
 
@@ -392,6 +405,7 @@ function App() {
             </div>
             <div className="flex flex-row items-center">
               <Switch size="small" className="mr-1" checked={isEnableScript} onChange={handleEnableScriptChange} />
+              <Button type="text" icon={<FiCpu />} iconOnly onClick={handleAiChatClick} title="AI 对话" />
               <Button type="text" icon={<IconSettings />} iconOnly onClick={handleSettingsClick} />
               <Badge count={checkUpdate.isRead ? 0 : 1} dot offset={[-8, 6]}>
                 <Button type="text" icon={<IconNotification />} iconOnly onClick={handleNotificationClick} />

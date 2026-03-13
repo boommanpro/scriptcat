@@ -802,10 +802,20 @@ export const ScriptTable = ({
                       break;
                     }
                     case "delete":
-                      if (confirm(t("list.confirm_delete"))) {
-                        const uuids = select.map((item) => item.uuid);
-                        scriptClient.deletes(uuids); // async
-                      }
+                      modal.confirm({
+                        title: t("confirm_delete"),
+                        content: t("list.confirm_delete"),
+                        okText: t("confirm"),
+                        cancelText: t("cancel"),
+                        onOk: () => {
+                          const uuids = select.map((item) => item.uuid);
+                          scriptClient.deletes(uuids).then(() => {
+                            setSelect([]);
+                            setShowAction(false);
+                            Message.success(t("delete_success"));
+                          });
+                        },
+                      });
                       break;
                     case "pin_to_top": {
                       // 将选中的脚本置顶
@@ -821,41 +831,47 @@ export const ScriptTable = ({
                     }
                     // 批量检查更新
                     case "check_update":
-                      if (confirm(t("list.confirm_update")!)) {
-                        select.forEach((item, index, array) => {
-                          if (!item.checkUpdateUrl) {
-                            return;
-                          }
-                          Message.warning({
-                            id: "checkupdateStart",
-                            content: t("starting_updates"),
-                          });
-                          scriptClient
-                            .requestCheckUpdate(item.uuid)
-                            .then((res) => {
-                              if (res) {
-                                // 需要更新
-                                Message.warning({
-                                  id: "checkupdate",
-                                  content: `${i18nName(item)} ${t("new_version_available")}`,
-                                });
-                              }
-                              if (index === array.length - 1) {
-                                // 当前元素是最后一个
-                                Message.success({
-                                  id: "checkupdateEnd",
-                                  content: t("checked_for_all_selected"),
-                                });
-                              }
-                            })
-                            .catch((e) => {
-                              Message.error({
-                                id: "checkupdate",
-                                content: `${t("update_check_failed")}: ${e.message}`,
-                              });
+                      modal.confirm({
+                        title: t("confirm_update"),
+                        content: t("list.confirm_update"),
+                        okText: t("confirm"),
+                        cancelText: t("cancel"),
+                        onOk: () => {
+                          select.forEach((item, index, array) => {
+                            if (!item.checkUpdateUrl) {
+                              return;
+                            }
+                            Message.warning({
+                              id: "checkupdateStart",
+                              content: t("starting_updates"),
                             });
-                        });
-                      }
+                            scriptClient
+                              .requestCheckUpdate(item.uuid)
+                              .then((res) => {
+                                if (res) {
+                                  // 需要更新
+                                  Message.warning({
+                                    id: "checkupdate",
+                                    content: `${i18nName(item)} ${t("new_version_available")}`,
+                                  });
+                                }
+                                if (index === array.length - 1) {
+                                  // 当前元素是最后一个
+                                  Message.success({
+                                    id: "checkupdateEnd",
+                                    content: t("checked_for_all_selected"),
+                                  });
+                                }
+                              })
+                              .catch((e) => {
+                                Message.error({
+                                  id: "checkupdate",
+                                  content: `${t("update_check_failed")}: ${e.message}`,
+                                });
+                              });
+                          });
+                        },
+                      });
                       break;
                     default:
                       Message.error(t("unknown_operation")!);

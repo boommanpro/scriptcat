@@ -16,7 +16,7 @@ import {
 import { IconDown } from "@arco-design/web-react/icon";
 import { v4 as uuidv4 } from "uuid";
 import CodeEditor from "../components/CodeEditor";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import type { SCMetadata, Script } from "@App/app/repo/scripts";
 import { SCRIPT_STATUS_DISABLE, SCRIPT_STATUS_ENABLE } from "@App/app/repo/scripts";
 import type { Subscribe } from "@App/app/repo/subscribe";
@@ -86,7 +86,7 @@ function App() {
     return script;
   };
 
-  const initAsync = async () => {
+  const initAsync = useCallback(async () => {
     try {
       const locationUrl = new URL(window.location.href);
       const uuid = locationUrl.searchParams.get("uuid");
@@ -177,10 +177,12 @@ function App() {
       const delay = Math.floor(5000 * Math.random()) + 10000; // 使用乱数时间避免浏览器重启时大量Tabs同时执行DB清除
       timeoutExecution(`${cIdKey}cleanupFileHandle`, cleanupOldHandles, delay);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     initAsync();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [watchFile, setWatchFile] = useState(false);
@@ -216,6 +218,7 @@ function App() {
     }
 
     return permissions;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scriptInfo, metadataLive]);
 
   const description = useMemo(() => {
@@ -247,7 +250,7 @@ function App() {
     }
 
     return description;
-  }, [scriptInfo, metadataLive]);
+  }, [scriptInfo, metadataLive, t]);
 
   const antifeatures: { [key: string]: { color: string; title: string; description: string } } = {
     "referral-link": {
@@ -292,7 +295,7 @@ function App() {
     if (upsertScript) {
       document.title = `${!isUpdate ? t("install_script") : t("update_script")} - ${i18nName(upsertScript!)} - ScriptCat`;
     }
-  }, [isUpdate, scriptInfo, upsertScript]);
+  }, [isUpdate, scriptInfo, upsertScript, t]);
 
   // 设置脚本状态
   useEffect(() => {
@@ -496,6 +499,7 @@ function App() {
     return () => {
       unmountFileTrack(handle);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoWatchFile]);
 
   return (

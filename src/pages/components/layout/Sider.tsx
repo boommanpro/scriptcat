@@ -4,6 +4,14 @@ import ScriptList from "@App/pages/options/routes/ScriptList";
 import Setting from "@App/pages/options/routes/Setting";
 import SubscribeList from "@App/pages/options/routes/SubscribeList";
 import Tools from "@App/pages/options/routes/Tools";
+import AIConversation from "@App/pages/options/routes/AIConversation/index";
+import CSPRuleManage from "@App/pages/options/routes/CSPRule/index";
+import AutomationScriptManage from "@App/pages/options/routes/AutomationScript/index";
+import AutomationScriptEditor from "@App/pages/options/routes/AutomationScript/Editor";
+import CloudControl from "@App/pages/options/routes/CloudControl/index";
+import WorkflowList from "@App/pages/options/routes/Workflow/index";
+import WorkflowEditor from "@App/pages/options/routes/Workflow/Editor";
+import BrowsingStats from "@App/pages/options/routes/BrowsingStats/index";
 import { Layout, Menu } from "@arco-design/web-react";
 import {
   IconCode,
@@ -16,6 +24,12 @@ import {
   IconSettings,
   IconSubscribe,
   IconTool,
+  IconRobot,
+  IconLock,
+  IconThunderbolt,
+  IconCloud,
+  IconApps,
+  IconMosaic,
 } from "@arco-design/web-react/icon";
 import React, { useRef, useState } from "react";
 import { HashRouter, Route, Routes } from "react-router-dom";
@@ -70,6 +84,36 @@ const Sider: React.FC = () => {
             <CustomLink to="/tools" className="menu-tools">
               <MenuItem key="/tools">
                 <IconTool /> {t("tools")}
+              </MenuItem>
+            </CustomLink>
+            <CustomLink to="/csp-rule" className="menu-csp-rule">
+              <MenuItem key="/csp-rule">
+                <IconLock /> {t("csp_rule")}
+              </MenuItem>
+            </CustomLink>
+            <CustomLink to="/automation-script" className="menu-automation-script">
+              <MenuItem key="/automation-script">
+                <IconThunderbolt /> {t("automation_script")}
+              </MenuItem>
+            </CustomLink>
+            <CustomLink to="/workflow" className="menu-workflow">
+              <MenuItem key="/workflow">
+                <IconApps /> {t("workflow")}
+              </MenuItem>
+            </CustomLink>
+            <CustomLink to="/cloud-control" className="menu-cloud-control">
+              <MenuItem key="/cloud-control">
+                <IconCloud /> {t("cloud_control")}
+              </MenuItem>
+            </CustomLink>
+            <CustomLink to="/ai-conversation" className="menu-ai-conversation">
+              <MenuItem key="/ai-conversation">
+                <IconRobot /> {t("ai_settings")}
+              </MenuItem>
+            </CustomLink>
+            <CustomLink to="/browsing-stats" className="menu-browsing-stats">
+              <MenuItem key="/browsing-stats">
+                <IconMosaic /> {t("browsing_stats")}
               </MenuItem>
             </CustomLink>
             <CustomLink to="/setting" className="menu-setting">
@@ -175,6 +219,20 @@ const Sider: React.FC = () => {
           <Route path="/subscribe" element={<SubscribeList />} />
           <Route path="/logger" element={<Logger />} />
           <Route path="/tools" element={<Tools />} />
+          <Route path="/csp-rule" element={<CSPRuleManage />} />
+          <Route path="/automation-script" element={<AutomationScriptManage />} />
+          <Route path="/automation-script/editor">
+            <Route path=":id" element={<AutomationScriptEditor />} />
+            <Route path="" element={<AutomationScriptEditor />} />
+          </Route>
+          <Route path="/workflow" element={<WorkflowList />} />
+          <Route path="/workflow/editor">
+            <Route path=":id" element={<WorkflowEditor />} />
+            <Route path="" element={<WorkflowEditor />} />
+          </Route>
+          <Route path="/cloud-control" element={<CloudControl />} />
+          <Route path="/ai-conversation" element={<AIConversation />} />
+          <Route path="/browsing-stats" element={<BrowsingStats />} />
           <Route path="/setting" element={<Setting />} />
         </Routes>
       </Layout.Content>

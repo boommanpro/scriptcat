@@ -22,8 +22,8 @@
  * 2. 元素标签名
  * 3. 属性对象
  */
-const el = GM_addElement(document.querySelector('.BorderGrid-cell'), "img", {
-    src: "https://bbs.tampermonkey.net.cn/uc_server/avatar.php?uid=4&size=small&ts=1"
+const el = GM_addElement(document.querySelector(".BorderGrid-cell"), "img", {
+  src: "https://bbs.tampermonkey.net.cn/uc_server/avatar.php?uid=4&size=small&ts=1",
 });
 
 // 打印创建出来的 DOM 元素

@@ -16,6 +16,9 @@ import { type VSCodeConnect } from "../offscreen/vscode-connect";
 import { type SystemService } from "./system";
 import { type ScriptInfo } from "@App/pkg/utils/scriptInstall";
 import type { ScriptService, TCheckScriptUpdateOption, TOpenBatchUpdatePageOption } from "./script";
+import type { CSPRule } from "@App/app/repo/cspRule";
+import type { AutomationScript, AutomationTestLog } from "@App/app/repo/automationScript";
+import type { Workflow, WorkflowExecutionLog } from "@App/app/repo/workflow";
 
 export class ServiceWorkerClient extends Client {
   constructor(msgSender: MessageSend) {
@@ -403,5 +406,185 @@ export class SystemClient extends Client {
 
   getFaviconFromDomain(domain: string): ReturnType<SystemService["getFaviconFromDomain"]> {
     return this.doThrow("getFaviconFromDomain", domain);
+  }
+}
+
+export class CSPRuleClient extends Client {
+  constructor(msgSender: MessageSend) {
+    super(msgSender, "serviceWorker/cspRule");
+  }
+
+  getAllRules(): Promise<CSPRule[]> {
+    return this.doThrow("getAllRules");
+  }
+
+  getEnabledRules(): Promise<CSPRule[]> {
+    return this.doThrow("getEnabledRules");
+  }
+
+  createRule(rule: Omit<CSPRule, "id" | "createtime" | "updatetime">): Promise<CSPRule> {
+    return this.doThrow("createRule", rule);
+  }
+
+  updateRule(id: string, changes: Partial<CSPRule>): Promise<CSPRule | false | undefined> {
+    return this.do("updateRule", { id, changes });
+  }
+
+  deleteRule(id: string): Promise<void> {
+    return this.do("deleteRule", id);
+  }
+
+  toggleRule(id: string, enabled: boolean): Promise<CSPRule | false | undefined> {
+    return this.do("toggleRule", { id, enabled });
+  }
+
+  reorderRules(ruleIds: string[]): Promise<void> {
+    return this.do("reorderRules", ruleIds);
+  }
+}
+
+export class AutomationScriptClient extends Client {
+  constructor(msgSender: MessageSend) {
+    super(msgSender, "serviceWorker/automationScript");
+  }
+
+  getAllScripts(): Promise<AutomationScript[]> {
+    return this.doThrow("getAllScripts");
+  }
+
+  getEnabledScripts(): Promise<AutomationScript[]> {
+    return this.doThrow("getEnabledScripts");
+  }
+
+  getByKey(key: string): Promise<AutomationScript | undefined> {
+    return this.do("getByKey", key);
+  }
+
+  createScript(script: Omit<AutomationScript, "id" | "createtime" | "updatetime">): Promise<AutomationScript> {
+    return this.doThrow("createScript", script);
+  }
+
+  updateScript(id: string, changes: Partial<AutomationScript>): Promise<AutomationScript | false | undefined> {
+    return this.do("updateScript", { id, changes });
+  }
+
+  deleteScript(id: string): Promise<void> {
+    return this.do("deleteScript", id);
+  }
+
+  toggleScript(id: string, enabled: boolean): Promise<AutomationScript | false | undefined> {
+    return this.do("toggleScript", { id, enabled });
+  }
+
+  getTestLogs(scriptKey: string, limit?: number): Promise<AutomationTestLog[]> {
+    return this.doThrow("getTestLogs", { scriptKey, limit });
+  }
+
+  getTestLogByTaskId(testTaskId: string): Promise<AutomationTestLog | undefined> {
+    return this.doThrow("getTestLogByTaskId", testTaskId);
+  }
+
+  createTestLog(log: Omit<AutomationTestLog, "id" | "createtime">): Promise<AutomationTestLog> {
+    return this.doThrow("createTestLog", log);
+  }
+
+  updateTestLog(id: string, changes: Partial<AutomationTestLog>): Promise<AutomationTestLog | false | undefined> {
+    return this.do("updateTestLog", { id, changes });
+  }
+
+  deleteTestLog(id: string): Promise<void> {
+    return this.do("deleteTestLog", id);
+  }
+
+  runTest(
+    scriptKey: string,
+    inputJson: string,
+    tabId?: number,
+    scriptContent?: string,
+    waitForResponse?: boolean,
+    responseTimeout?: number
+  ): Promise<AutomationTestLog> {
+    return this.doThrow("runTest", { scriptKey, inputJson, tabId, scriptContent, waitForResponse, responseTimeout });
+  }
+
+  openTargetPage(scriptKey: string): Promise<number> {
+    return this.doThrow("openTargetPage", scriptKey);
+  }
+
+  getActiveTabs(): Promise<chrome.tabs.Tab[]> {
+    return this.doThrow("getActiveTabs");
+  }
+
+  executeScript(
+    scriptKey: string,
+    input: any,
+    tabId?: number
+  ): Promise<{ success: boolean; result?: any; error?: string }> {
+    return this.doThrow("executeScript", { scriptKey, input, tabId });
+  }
+}
+
+export class WorkflowClient extends Client {
+  constructor(msgSender: MessageSend) {
+    super(msgSender, "serviceWorker/workflow");
+  }
+
+  getAllWorkflows(): Promise<Workflow[]> {
+    return this.doThrow("getAllWorkflows");
+  }
+
+  getEnabledWorkflows(): Promise<Workflow[]> {
+    return this.doThrow("getEnabledWorkflows");
+  }
+
+  getByKey(key: string): Promise<Workflow | undefined> {
+    return this.do("getByKey", key);
+  }
+
+  createWorkflow(workflow: Omit<Workflow, "id" | "createtime" | "updatetime">): Promise<Workflow> {
+    return this.doThrow("createWorkflow", workflow);
+  }
+
+  updateWorkflow(id: string, changes: Partial<Workflow>): Promise<Workflow | false | undefined> {
+    return this.do("updateWorkflow", { id, changes });
+  }
+
+  deleteWorkflow(id: string): Promise<void> {
+    return this.do("deleteWorkflow", id);
+  }
+
+  toggleWorkflow(id: string, enabled: boolean): Promise<Workflow | false | undefined> {
+    return this.do("toggleWorkflow", { id, enabled });
+  }
+
+  getExecutionLogs(workflowId: string, limit?: number): Promise<WorkflowExecutionLog[]> {
+    return this.doThrow("getExecutionLogs", { workflowId, limit });
+  }
+
+  getExecutionLogById(id: string): Promise<WorkflowExecutionLog | undefined> {
+    return this.do("getExecutionLogById", id);
+  }
+
+  createExecutionLog(log: Omit<WorkflowExecutionLog, "id" | "createtime">): Promise<WorkflowExecutionLog> {
+    return this.doThrow("createExecutionLog", log);
+  }
+
+  updateExecutionLog(
+    id: string,
+    changes: Partial<WorkflowExecutionLog>
+  ): Promise<WorkflowExecutionLog | false | undefined> {
+    return this.do("updateExecutionLog", { id, changes });
+  }
+
+  deleteExecutionLog(id: string): Promise<void> {
+    return this.do("deleteExecutionLog", id);
+  }
+
+  runWorkflow(workflowId: string, inputJson: string): Promise<WorkflowExecutionLog> {
+    return this.doThrow("runWorkflow", { workflowId, inputJson });
+  }
+
+  stopWorkflowExecution(executionLogId: string): Promise<void> {
+    return this.do("stopWorkflowExecution", executionLogId);
   }
 }

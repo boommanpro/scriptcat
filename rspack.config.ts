@@ -20,14 +20,14 @@ const assets = `${src}/assets`;
 export default defineConfig({
   ...(isDev
     ? {
-        watch: true,
-        mode: "development",
-        devtool: process.env.NO_MAP === "true" ? false : "inline-source-map",
-      }
+      watch: true,
+      mode: "development",
+      devtool: process.env.NO_MAP === "true" ? false : "inline-source-map",
+    }
     : {
-        mode: "production",
-        devtool: false,
-      }),
+      mode: "production",
+      devtool: false,
+    }),
   context: dirname,
   entry: {
     service_worker: `${src}/service_worker.ts`,
@@ -35,12 +35,15 @@ export default defineConfig({
     sandbox: `${src}/sandbox.ts`,
     content: `${src}/content.ts`,
     inject: `${src}/inject.ts`,
+    "content/network-monitor": `${src}/content/network-monitor.ts`,
+    "content/browsing-stats": `${src}/content/browsing-stats.ts`,
     popup: `${src}/pages/popup/main.tsx`,
     install: `${src}/pages/install/main.tsx`,
     batchupdate: `${src}/pages/batchupdate/main.tsx`,
     confirm: `${src}/pages/confirm/main.tsx`,
     import: `${src}/pages/import/main.tsx`,
     options: `${src}/pages/options/main.tsx`,
+    sidepanel: `${src}/sidepanel.tsx`,
     "editor.worker": "monaco-editor/esm/vs/editor/editor.worker.js",
     "ts.worker": "monaco-editor/esm/vs/language/typescript/ts.worker.js",
     "linter.worker": `${src}/linter.worker.ts`,
@@ -127,7 +130,6 @@ export default defineConfig({
             const manifest = JSON.parse(content.toString());
             if (isDev || isBeta) {
               manifest.name = "__MSG_scriptcat_beta__";
-              // manifest.content_security_policy = "script-src 'self' https://cdn.crowdin.com; object-src 'self'";
             }
             return JSON.stringify(manifest);
           },
@@ -140,6 +142,18 @@ export default defineConfig({
         {
           from: `${assets}/_locales`,
           to: `${dist}/ext/_locales`,
+        },
+        {
+          from: `${src}/content-script-inject.js`,
+          to: `${dist}/ext/src`,
+        },
+        {
+          from: `${dirname}/node_modules/chobitsu/dist/chobitsu.js`,
+          to: `${dist}/ext/chobitsu.js`,
+        },
+        {
+          from: `${dirname}/public/network-monitor-inject.js`,
+          to: `${dist}/ext/src/network-monitor-inject.js`,
         },
       ],
     }),
@@ -205,6 +219,14 @@ export default defineConfig({
       minify: true,
       chunks: ["sandbox"],
     }),
+    new rspack.HtmlRspackPlugin({
+      filename: `${dist}/ext/src/sidepanel.html`,
+      template: `${src}/sidepanel.html`,
+      inject: "head",
+      title: "AI Chat - ScriptCat",
+      minify: true,
+      chunks: ["sidepanel"],
+    }),
   ].filter(Boolean),
   optimization: {
     minimizer: [
@@ -216,9 +238,15 @@ export default defineConfig({
     splitChunks: {
       chunks: (chunk) => {
         // 排除这些文件，不进行分离
-        return !["editor.worker", "ts.worker", "linter.worker", "service_worker", "content", "inject"].includes(
-          chunk.name || ""
-        );
+        return ![
+          "editor.worker",
+          "ts.worker",
+          "linter.worker",
+          "service_worker",
+          "content",
+          "inject",
+          "content/network-monitor",
+        ].includes(chunk.name || "");
       },
       minSize: 307200,
       maxSize: 4194304,

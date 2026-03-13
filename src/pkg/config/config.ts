@@ -18,6 +18,13 @@ export type CloudSyncConfig = {
   params: { [key: string]: any };
 };
 
+export type AISettings = {
+  apiEndpoint: string;
+  apiKey: string;
+  model: string;
+  enabled: boolean;
+};
+
 export type CATFileStorage = {
   filesystem: FileSystemType;
   params: { [key: string]: any };
@@ -449,6 +456,23 @@ export class SystemConfig {
 
   getScriptMenuDisplayType(): Promise<"no_browser" | "all"> {
     return this._get("script_menu_display_type", "all");
+  }
+
+  defaultAISettings(): AISettings {
+    return {
+      apiEndpoint: "http://localhost:1234/v1",
+      apiKey: "",
+      model: "qwen/qwen3-4b-2507",
+      enabled: false,
+    };
+  }
+
+  getAiSettings() {
+    return this._get<AISettings>("ai_settings", this.defaultAISettings());
+  }
+
+  setAiSettings(data: AISettings) {
+    this._set("ai_settings", data);
   }
 }
 
