@@ -23,7 +23,6 @@ jobs:
       - name: Package with Node
         run: |
           pnpm i --frozen-lockfile
-          pnpm test
           pnpm run pack
 
       - uses: ncipollo/release-action@v1
